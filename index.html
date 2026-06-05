@@ -1,0 +1,2441 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#060c1a">
+<title>MX Maintenance — AHU Check</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#060c1a; --s1:#0c1528; --s2:#111d34; --s3:#16253e;
+  --border:#1b2e4e; --border2:#243d66;
+  --accent:#00d4ff; --accent2:#00ff88; --warn:#ffb800; --danger:#ff3b5c;
+  --text:#e2eeff; --dim:#5a7099; --dim2:#3d5278;
+  --mono:'Space Mono',monospace; --sans:'Sarabun',sans-serif;
+  --r:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;flex-direction:column;}
+
+/* GRID BG */
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);
+  background-size:36px 36px;pointer-events:none;z-index:0;}
+
+/* HEADER */
+.hdr{position:relative;z-index:10;background:rgba(6,12,26,.97);border-bottom:1px solid var(--border);
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.hdr-logo{display:flex;align-items:center;gap:10px;}
+.hdr-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.hdr-name{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);line-height:1.3;}
+.hdr-sub{font-size:10px;color:var(--dim);}
+.hdr-time{text-align:right;}
+.hdr-clock{font-family:var(--mono);font-size:13px;color:var(--accent2);font-weight:700;}
+.hdr-date{font-size:10px;color:var(--dim);margin-top:1px;}
+
+/* NAV */
+.nav{position:relative;z-index:9;background:var(--s1);border-bottom:1px solid var(--border);
+  display:flex;overflow-x:auto;scrollbar-width:none;flex-shrink:0;}
+.nav::-webkit-scrollbar{display:none;}
+.ntab{flex:1;min-width:72px;padding:10px 6px;text-align:center;font-size:9px;color:var(--dim);
+  cursor:pointer;border-bottom:2px solid transparent;transition:.2s;font-family:var(--mono);
+  white-space:nowrap;letter-spacing:.5px;user-select:none;}
+.ntab.on{color:var(--accent);border-bottom-color:var(--accent);background:rgba(0,212,255,.05);}
+.ntab-ico{font-size:15px;display:block;margin-bottom:2px;}
+
+/* SCROLL AREA */
+.scroll{flex:1;overflow-y:auto;position:relative;z-index:1;-webkit-overflow-scrolling:touch;}
+.scroll::-webkit-scrollbar{width:3px;}
+.scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.inner{padding:14px;max-width:480px;margin:0 auto;padding-bottom:32px;}
+
+/* PAGE */
+.page{display:none;}.page.on{display:block;}
+
+/* SECTION LABEL */
+.slabel{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.slabel::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px;margin-bottom:10px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--accent),transparent);}
+.card.green::before{background:linear-gradient(90deg,var(--accent2),transparent);}
+.card.warn::before{background:linear-gradient(90deg,var(--warn),transparent);}
+
+/* MACHINE SELECTOR — 2-step accordion */
+.mcat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.mcat-btn{background:var(--s2);border:1px solid var(--border);border-radius:12px;
+  padding:14px 10px;text-align:center;cursor:pointer;transition:.2s;user-select:none;position:relative;}
+.mcat-btn:hover{border-color:var(--border2);background:rgba(255,255,255,.03);}
+.mcat-btn.open.cat-ahu{border-color:var(--accent);background:rgba(0,212,255,.1);box-shadow:0 0 0 1px var(--accent);}
+.mcat-btn.open.cat-chl{border-color:var(--accent2);background:rgba(0,255,136,.08);box-shadow:0 0 0 1px var(--accent2);}
+.mcat-icon{font-size:22px;margin-bottom:5px;}
+.mcat-name{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);}
+.mcat-btn.open.cat-ahu .mcat-name{color:var(--accent);}
+.mcat-btn.open.cat-chl .mcat-name{color:var(--accent2);}
+.mcat-count{font-size:10px;color:var(--dim);margin-top:3px;font-family:var(--mono);}
+.mcat-arrow{position:absolute;top:10px;right:12px;font-size:11px;color:var(--dim);
+  transition:transform .2s;}
+.mcat-btn.open .mcat-arrow{transform:rotate(180deg);}
+
+/* Sub-machine grid (slides open) */
+.msub-wrap{overflow:hidden;max-height:0;transition:max-height .3s ease;margin-bottom:0;}
+.msub-wrap.open{max-height:300px;margin-bottom:8px;}
+.msub-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px 2px;}
+.msel-btn{background:var(--s3);border:1px solid var(--border);border-radius:9px;
+  padding:10px 8px;text-align:center;cursor:pointer;transition:.18s;user-select:none;}
+.msel-btn:hover{border-color:var(--border2);background:rgba(255,255,255,.04);}
+.msel-btn.selected{border-color:var(--accent);background:rgba(0,212,255,.12);box-shadow:0 0 0 1px var(--accent);}
+.msel-btn.selected101{border-color:var(--warn);background:rgba(255,184,0,.1);box-shadow:0 0 0 1px var(--warn);}
+.msel-btn.selected-chl{border-color:var(--accent2);background:rgba(0,255,136,.08);box-shadow:0 0 0 1px var(--accent2);}
+.msel-id{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);}
+.msel-btn.selected101 .msel-id{color:var(--warn);}
+.msel-btn.selected-chl .msel-id{color:var(--accent2);}
+.msel-type{font-size:9px;color:var(--dim);margin-top:3px;}
+.msel-badge{display:inline-block;font-size:8px;padding:2px 5px;border-radius:3px;margin-top:4px;font-family:var(--mono);}
+.badge-cr{background:rgba(255,184,0,.15);color:var(--warn);border:1px solid rgba(255,184,0,.3);}
+.badge-smt{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2);}
+.badge-chl{background:rgba(0,255,136,.1);color:var(--accent2);border:1px solid rgba(0,255,136,.25);}
+.msel-grid{display:none;}/* legacy — not used */
+
+/* FORM */
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg.full{grid-column:1/-1;}
+.fl{font-size:10px;color:var(--dim);font-family:var(--mono);display:flex;align-items:center;gap:5px;}
+.fu{font-size:9px;color:var(--accent);background:rgba(0,212,255,.1);padding:1px 5px;border-radius:3px;}
+.fspec{font-size:9px;color:var(--dim2);margin-top:1px;}
+
+input[type=number],input[type=text],select,textarea{
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:9px 11px;font-size:14px;font-family:var(--mono);
+  width:100%;outline:none;transition:.18s;-webkit-appearance:none;
+  -moz-appearance:textfield;}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,255,.1);}
+input.ok{border-color:var(--accent2);}
+input.bad{border-color:var(--danger);box-shadow:0 0 0 2px rgba(255,59,92,.15);animation:shk .28s ease;}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.vmsg{font-size:9px;color:var(--danger);font-family:var(--mono);display:none;margin-top:2px;}
+.vmsg.show{display:block;}
+select option{background:var(--s2);}
+
+/* CHECKLIST ITEMS */
+.ci{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;background:var(--s2);
+  border-radius:8px;margin-bottom:6px;cursor:pointer;border:1px solid transparent;transition:.18s;}
+.ci:hover{border-color:var(--border2);}
+.ci.ck{background:rgba(0,255,136,.05);border-color:rgba(0,255,136,.2);}
+.ci.bad-ci{background:rgba(255,59,92,.07);border-color:rgba(255,59,92,.3);}
+.ci-no{font-family:var(--mono);font-size:10px;color:var(--dim);width:16px;flex-shrink:0;padding-top:2px;}
+.ci-body{flex:1;}
+.ci-desc{font-size:13px;line-height:1.4;}
+.ci.ck .ci-desc{color:var(--dim);}
+.ci-spec{font-size:10px;color:var(--dim);margin-top:3px;font-family:var(--mono);}
+.ci-box{width:22px;height:22px;border:2px solid var(--border2);border-radius:6px;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.18s;margin-top:1px;}
+.ci.ck .ci-box{background:var(--accent2);border-color:var(--accent2);color:#000;font-size:11px;font-weight:700;}
+.ci-status{font-size:9px;font-family:var(--mono);margin-top:4px;display:none;}
+.ci-status.show{display:block;}
+
+/* VALUE INPUT ITEM */
+.vi{background:var(--s2);border-radius:8px;margin-bottom:6px;padding:12px;border:1px solid var(--border);}
+.vi-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.vi-no{font-family:var(--mono);font-size:10px;color:var(--dim);}
+.vi-desc{font-size:13px;margin-top:2px;}
+.vi-spec{font-size:10px;color:var(--dim);font-family:var(--mono);}
+.vi-input-row{display:flex;align-items:center;gap:8px;}
+.vi-input-row input{flex:1;}
+.vi-unit{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap;}
+.vi-badge{font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:4px;flex-shrink:0;}
+.ok-badge{background:rgba(0,255,136,.15);color:var(--accent2);border:1px solid rgba(0,255,136,.25);}
+.bad-badge{background:rgba(255,59,92,.15);color:var(--danger);border:1px solid rgba(255,59,92,.25);}
+.empty-badge{background:rgba(90,112,153,.1);color:var(--dim);border:1px solid var(--border);}
+
+/* PROGRESS */
+.prog-wrap{margin-bottom:14px;}
+.prog-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.prog-label{font-family:var(--mono);font-size:10px;color:var(--dim);}
+.prog-val{font-family:var(--mono);font-size:11px;color:var(--accent2);font-weight:700;}
+.prog-bar{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .4s ease;}
+.prog-fill.warn{background:linear-gradient(90deg,var(--warn),#ff7700);}
+
+/* STATUS PILL */
+.spill{font-family:var(--mono);font-size:9px;padding:4px 9px;border-radius:4px;font-weight:700;}
+.spill.ok{background:rgba(0,255,136,.12);color:var(--accent2);border:1px solid rgba(0,255,136,.25);}
+.spill.warn{background:rgba(255,184,0,.12);color:var(--warn);border:1px solid rgba(255,184,0,.25);}
+.spill.bad{background:rgba(255,59,92,.12);color:var(--danger);border:1px solid rgba(255,59,92,.25);}
+.spill.gray{background:rgba(90,112,153,.12);color:var(--dim);border:1px solid var(--border);}
+
+/* BUTTONS */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 18px;
+  border-radius:10px;border:none;cursor:pointer;font-family:var(--mono);font-size:12px;
+  font-weight:700;transition:.18s;width:100%;letter-spacing:.8px;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#008fb3);color:#000;}
+.btn-success{background:linear-gradient(135deg,var(--accent2),#00aa55);color:#000;}
+.btn-warn{background:linear-gradient(135deg,var(--warn),#cc7700);color:#000;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--dim);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn:active{transform:scale(.98);}
+.btn-row{display:flex;flex-direction:column;gap:7px;margin-top:14px;}
+.btn-2col{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px;}
+
+/* SCAN INDICATOR */
+.scanbar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--accent2);
+  font-family:var(--mono);margin-bottom:12px;padding:8px 12px;
+  background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.1);border-radius:8px;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:13px;}
+.kpi-lbl{font-size:10px;color:var(--dim);margin-bottom:5px;}
+.kpi-val{font-family:var(--mono);font-size:21px;font-weight:700;}
+.kpi.blue .kpi-val{color:var(--accent);}
+.kpi.green .kpi-val{color:var(--accent2);}
+.kpi.amber .kpi-val{color:var(--warn);}
+.kpi.red .kpi-val{color:var(--danger);}
+.kpi-unit{font-size:10px;color:var(--dim);margin-top:2px;}
+
+/* HISTORY ITEM */
+.hi{background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  padding:13px;margin-bottom:7px;cursor:pointer;transition:.18s;}
+.hi:hover{border-color:var(--border2);}
+.hi-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.hi-id{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);}
+.hi-meta{font-size:11px;color:var(--dim);}
+.hi-items{font-size:10px;color:var(--dim2);margin-top:4px;font-family:var(--mono);}
+
+/* REPORT */
+.rpt-header{background:linear-gradient(135deg,var(--s2),var(--s3));padding:15px;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.rpt-logo{font-family:var(--mono);font-size:22px;color:var(--accent);font-weight:700;}
+.rpt-info{flex:1;}
+.rpt-title{font-size:13px;font-weight:700;}
+.rpt-period{font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:2px;}
+table.rt{width:100%;border-collapse:collapse;font-size:11px;}
+table.rt th{background:rgba(0,212,255,.07);color:var(--accent);font-family:var(--mono);
+  padding:9px 11px;text-align:left;border-bottom:1px solid var(--border);font-size:9px;letter-spacing:.8px;}
+table.rt td{padding:9px 11px;border-bottom:1px solid rgba(27,46,78,.6);font-family:var(--mono);font-size:11px;}
+table.rt tr:last-child td{border-bottom:none;}
+table.rt tr:hover td{background:rgba(0,212,255,.025);}
+
+/* TOAST */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--s2);border:1px solid var(--border);border-radius:10px;
+  padding:11px 18px;font-family:var(--mono);font-size:11px;z-index:999;
+  transition:transform .28s ease;text-align:center;min-width:220px;max-width:88vw;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--accent2);color:var(--accent2);}
+.toast.err{border-color:var(--danger);color:var(--danger);}
+.toast.wrn{border-color:var(--warn);color:var(--warn);}
+
+/* =====================================================
+   PRINT STYLES — A4 Portrait
+   ===================================================== */
+@media print {
+  * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  body { background:#fff !important; overflow:visible !important; height:auto !important; }
+  body::before { display:none !important; }
+  .hdr,.nav,.scroll,.toast,#mtBtn,#secretMenu,#qrModal,#bdModal { display:none !important; }
+  #printArea { display:block !important; }
+  @page { size:A4 portrait; margin:12mm 10mm 10mm 10mm; }
+}
+#printArea {
+  display:none;
+  font-family:'Sarabun',Arial,sans-serif;
+  color:#111; background:#fff; width:100%;
+}
+.prn-hdr { display:flex;align-items:center;justify-content:space-between;border-bottom:2.5px solid #1a2e4a;padding-bottom:6px;margin-bottom:8px; }
+.prn-logo-box { display:flex;align-items:center;gap:10px; }
+.prn-logo-icon { width:44px;height:44px;background:#1a2e4a;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#00d4ff; }
+.prn-company { font-size:11px;font-weight:700;color:#1a2e4a;line-height:1.4; }
+.prn-company-sub { font-size:9px;color:#666;font-weight:400; }
+.prn-docinfo { text-align:right;font-size:9px;color:#555;line-height:1.6; }
+.prn-docno { font-weight:700;color:#1a2e4a;font-size:10px; }
+.prn-title-band { background:#1a2e4a;color:#fff;padding:6px 10px;font-size:12px;font-weight:700;letter-spacing:.5px;border-radius:3px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center; }
+.prn-title-band span { font-size:10px;font-weight:400;color:#a0c0d8; }
+.prn-info-grid { display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #ccc;border-radius:3px;margin-bottom:8px;overflow:hidden; }
+.prn-info-cell { padding:5px 8px;border-right:1px solid #ccc;font-size:9.5px; }
+.prn-info-cell:last-child { border-right:none; }
+.prn-info-label { color:#666;font-size:8.5px;text-transform:uppercase;letter-spacing:.5px; }
+.prn-info-value { font-weight:700;color:#1a2e4a;font-size:11px;margin-top:1px; }
+.prn-status-ok { background:#d4f5e0;color:#0a6630;border-radius:3px;padding:1px 6px;font-weight:700;font-size:9px; }
+.prn-status-alert { background:#ffe0e0;color:#cc0000;border-radius:3px;padding:1px 6px;font-weight:700;font-size:9px; }
+.prn-table { width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:8px; }
+.prn-table th { background:#1a2e4a;color:#fff;padding:5px 7px;text-align:left;font-size:8.5px;letter-spacing:.3px;border:1px solid #1a2e4a; }
+.prn-table td { padding:5px 7px;border:1px solid #ccc;vertical-align:middle; }
+.prn-table tr:nth-child(even) td { background:#f5f8fc; }
+.td-no { width:28px;text-align:center;color:#666;font-size:8.5px; }
+.td-val { text-align:center;font-weight:700;font-size:10px;width:70px; }
+.td-spec { color:#555;font-size:8.5px;width:120px; }
+.td-stat { text-align:center;width:50px; }
+.prn-ok { color:#0a6630;font-weight:700; }
+.prn-alert { color:#cc0000;font-weight:700; }
+.prn-remark { border:1px solid #ccc;border-radius:3px;padding:6px 9px;font-size:9.5px;margin-bottom:10px;min-height:28px; }
+.prn-remark-label { font-size:8.5px;color:#666;margin-bottom:2px; }
+.prn-sig { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:10px;border-top:1px solid #ccc;padding-top:8px; }
+.prn-sig-box { text-align:center;font-size:8.5px;color:#444; }
+.prn-sig-line { border-top:1px solid #888;margin:20px 8px 4px; }
+.prn-sig-title { font-weight:700;color:#1a2e4a; }
+.prn-week-table { width:100%;border-collapse:collapse;font-size:9px;margin-bottom:8px; }
+.prn-week-table th { background:#1a2e4a;color:#fff;padding:4px 5px;text-align:center;border:1px solid #1a2e4a;font-size:8px; }
+.prn-week-table td { padding:4px 5px;border:1px solid #ccc;text-align:center;vertical-align:middle; }
+.prn-week-table tr:nth-child(even) td { background:#f5f8fc; }
+.td-desc { text-align:left;font-size:9px; }
+.prn-week-no { background:#e8eef5 !important;font-weight:700;color:#1a2e4a; }
+.prn-footer { border-top:1px solid #ccc;padding-top:4px;font-size:8px;color:#888;display:flex;justify-content:space-between;margin-top:6px; }
+
+/* BACKDOOR MODAL */
+.bd-modal{display:none;position:fixed;inset:0;z-index:400;background:rgba(6,12,26,.98);overflow-y:auto;}
+#secretMenu{display:none!important;}
+#secretMenu.show{display:flex!important;}
+#qrModal{display:none!important;}
+#qrModal.show{display:flex!important;}
+.bd-modal.show{display:block;animation:fi .2s ease;}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.bd-inner{max-width:440px;margin:0 auto;padding:16px;}
+.bd-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.bd-title{font-family:var(--mono);font-size:13px;color:var(--warn);display:flex;align-items:center;gap:8px;}
+.bd-close{background:none;border:1px solid var(--border);color:var(--dim);
+  width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:14px;}
+
+/* Divider */
+.div{height:1px;background:var(--border);margin:14px 0;}
+
+/* hint box */
+.hint{text-align:center;padding:36px 20px;color:var(--dim);}
+.hint-ico{font-size:42px;margin-bottom:12px;}
+.hint-t{font-family:var(--mono);font-size:13px;}
+.hint-s{font-size:11px;margin-top:6px;color:var(--dim2);}
+
+/* Alert count badge */
+.alert-count{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;
+  font-family:var(--mono);font-size:8px;width:15px;height:15px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-weight:700;}
+.ntab{position:relative;}
+</style>
+</head>
+<body>
+
+<!-- ========== LOGIN SCREEN ========== -->
+<div id="loginScreen" style="position:fixed;inset:0;z-index:9999;background:#060c1a;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+
+  <!-- Grid background -->
+  <div style="position:absolute;inset:0;
+    background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);
+    background-size:36px 36px;pointer-events:none;"></div>
+
+  <!-- Logo -->
+  <div style="position:relative;text-align:center;margin-bottom:32px;">
+    <div style="width:64px;height:64px;background:linear-gradient(135deg,#00d4ff,#00ff88);
+      border-radius:16px;display:flex;align-items:center;justify-content:center;
+      font-size:30px;margin:0 auto 12px;">⚙️</div>
+    <div style="font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:#00d4ff;letter-spacing:2px;">MX MAINTENANCE</div>
+    <div style="font-size:11px;color:#5a7099;margin-top:4px;">IIDA Electronics (Thailand) · Section MT</div>
+  </div>
+
+  <!-- Login Card -->
+  <div style="position:relative;background:#0c1528;border:1px solid #1b2e4e;border-radius:16px;
+    padding:28px 24px;width:100%;max-width:320px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);">
+    <div style="font-family:'Space Mono',monospace;font-size:11px;color:#5a7099;
+      letter-spacing:2px;margin-bottom:20px;text-align:center;">🔐 ENTER PASSCODE</div>
+
+    <!-- PIN display -->
+    <div id="pinDisplay" style="display:flex;gap:12px;justify-content:center;margin-bottom:24px;">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+
+    <!-- Numpad -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <button onclick="pinKey('1')" class="pin-btn">1</button>
+      <button onclick="pinKey('2')" class="pin-btn">2</button>
+      <button onclick="pinKey('3')" class="pin-btn">3</button>
+      <button onclick="pinKey('4')" class="pin-btn">4</button>
+      <button onclick="pinKey('5')" class="pin-btn">5</button>
+      <button onclick="pinKey('6')" class="pin-btn">6</button>
+      <button onclick="pinKey('7')" class="pin-btn">7</button>
+      <button onclick="pinKey('8')" class="pin-btn">8</button>
+      <button onclick="pinKey('9')" class="pin-btn">9</button>
+      <button disabled style="background:transparent;border:none;"></button>
+      <button onclick="pinKey('0')" class="pin-btn">0</button>
+      <button onclick="pinKey('⌫')" class="pin-btn pin-del">⌫</button>
+    </div>
+
+    <div id="loginMsg" style="text-align:center;font-size:10px;color:#ff3b5c;
+      font-family:'Space Mono',monospace;margin-top:14px;min-height:16px;"></div>
+  </div>
+
+  <div style="position:relative;font-size:9px;color:#3d5278;margin-top:20px;
+    font-family:'Space Mono',monospace;">MX Smart Maintenance v2.1 · ฿0 / month</div>
+</div>
+
+<style>
+.pin-dot {
+  width:14px;height:14px;border-radius:50%;
+  border:2px solid #1b2e4e;background:transparent;
+  transition:.15s;
+}
+.pin-dot.filled { background:#00d4ff;border-color:#00d4ff; }
+.pin-dot.error  { background:#ff3b5c;border-color:#ff3b5c; }
+.pin-btn {
+  background:#111d34;border:1px solid #1b2e4e;border-radius:10px;
+  padding:16px;font-size:20px;color:#e2eeff;
+  font-family:'Space Mono',monospace;font-weight:700;
+  cursor:pointer;transition:.15s;
+}
+.pin-btn:active { background:#1b2e4e;transform:scale(.95); }
+.pin-del { color:#ff3b5c; }
+</style>
+
+<!-- MAIN APP (hidden until login) -->
+<div id="mainApp" style="display:none;height:100%;display:flex;flex-direction:column;">
+<div class="hdr">
+  <div class="hdr-logo">
+    <div class="hdr-icon">⚙️</div>
+    <div>
+      <div class="hdr-name">IIDA · MX SYSTEM</div>
+      <div class="hdr-sub">AHU Smart Checklist v2.0</div>
+    </div>
+  </div>
+  <div class="hdr-time">
+    <div class="hdr-clock" id="clock">--:--</div>
+    <div class="hdr-date" id="cdate">--/--/----</div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="ntab on" id="nt-check" onclick="goTab('check',this)">
+    <span class="ntab-ico">📋</span>CHECK
+  </div>
+  <div class="ntab" id="nt-history" onclick="goTab('history',this)">
+    <span class="ntab-ico">📊</span>HISTORY
+  </div>
+  <div class="ntab" id="nt-report" onclick="goTab('report',this)">
+    <span class="ntab-ico">📄</span>REPORT
+  </div>
+  <div class="ntab" id="nt-log" onclick="goTab('log',this)">
+    <span class="ntab-ico">🔧</span>WORK LOG
+  </div>
+</div>
+
+<!-- SCROLL AREA -->
+<div class="scroll">
+<div class="inner">
+
+<!-- ========== CHECK PAGE ========== -->
+<div class="page on" id="page-check">
+
+  <div class="scanbar">
+    <div class="dot"></div>
+    <span id="scanStatus">ONLINE — พร้อมบันทึกข้อมูล</span>
+    <span style="margin-left:auto;display:flex;align-items:center;gap:5px;">
+      <span id="syncDot" style="width:6px;height:6px;border-radius:50%;background:#5a7099;display:inline-block;flex-shrink:0;"></span>
+      <span id="syncLabel" style="font-size:9px;color:#5a7099;font-family:var(--mono);">READY</span>
+    </span>
+  </div>
+
+  <!-- STEP 1: Select Machine -->
+  <div class="slabel">STEP 1 — เลือกประเภทหมู่เครื่องจักร</div>
+  <div class="card">
+    <div id="machineGrid">
+      <!-- generated by JS -->
+    </div>
+    <!-- QR row -->
+    <div style="display:flex;gap:8px;margin-top:10px;margin-bottom:10px;">
+      <button onclick="openQRScanner()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+        padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--s2);
+        color:var(--dim);font-family:var(--mono);font-size:10px;cursor:pointer;transition:.18s;"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--dim)'">
+        📷 SCAN QR
+      </button>
+      <button onclick="showQRGen()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+        padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--s2);
+        color:var(--dim);font-family:var(--mono);font-size:10px;cursor:pointer;transition:.18s;"
+        onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--dim)'">
+        ⬛ GEN QR
+      </button>
+    </div>
+    <!-- QR Gen picker (hidden) -->
+    <div id="qrGenPicker" style="display:none;margin-bottom:10px;">
+      <select id="qrMachinePick" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;
+        color:var(--text);padding:9px 11px;font-size:13px;font-family:var(--mono);width:100%;outline:none;margin-bottom:8px;">
+        <option value="">— เลือกเครื่องที่ต้องการ Gen QR —</option>
+        <option>AHU-F-101</option><option>AHU-F-102</option><option>AHU-F-103</option>
+        <option>AHU-F-201</option><option>AHU-F-202</option><option>AHU-F-203</option><option>AHU-F-204</option>
+        <option>ACH-01/1</option><option>ACH-01/2</option><option>ACH-01/3</option>
+      </select>
+      <button onclick="generateQR()" style="width:100%;padding:10px;border-radius:8px;border:none;
+        background:linear-gradient(135deg,var(--accent2),#00aa55);color:#000;
+        font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;">
+        ⬛ สร้าง QR Code
+      </button>
+    </div>
+    <!-- QR scanner inline area -->
+    <div id="qrScanArea" style="display:none;margin-bottom:10px;"></div>
+    <div class="frow" style="margin-top:0;margin-bottom:0;">
+      <div class="fg">
+        <div class="fl">📅 วันที่ / เดือน</div>
+        <input type="text" id="recDate" readonly>
+      </div>
+      <div class="fg">
+        <div class="fl">👤 ผู้ตรวจ</div>
+        <select id="techSel">
+          <option value="Suphanat">Mr. Suphanat Khamhom (Technician)</option>
+          <option value="Yuttana">Mr. Yuttana Inplang (Jr. Engineer)</option>
+          <option value="Anirat">Mr. Anirat Suwannarang (Sr. Supervisor)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Checklist (hidden until machine selected) -->
+  <div id="formArea" style="display:none;">
+    <div class="slabel" id="formTitle">STEP 2 — AHU-F-101 CHECKLIST</div>
+
+    <!-- machine info bar -->
+    <div class="card" style="padding:11px 14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:var(--mono);font-size:15px;font-weight:700;" id="fi-id">AHU-F-101</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:2px;" id="fi-loc">Cleanroom AHU Room</div>
+        </div>
+        <div id="fi-status" class="spill gray">● PENDING</div>
+      </div>
+      <div class="div" style="margin:10px 0;"></div>
+      <div class="prog-wrap" style="margin-bottom:0;">
+        <div class="prog-row">
+          <div class="prog-label">ความคืบหน้า</div>
+          <div class="prog-val" id="progText">0 / 0</div>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- Items will be injected here -->
+    <div id="itemsContainer"></div>
+
+    <!-- Remark -->
+    <div class="card green">
+      <div class="fl" style="margin-bottom:8px;">📝 หมายเหตุ / Remark</div>
+      <textarea id="remark" rows="2" placeholder="ระบุปัญหาหรือข้อสังเกตเพิ่มเติม..." style="resize:none;font-family:var(--sans);font-size:13px;"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="submitRecord()">✅ บันทึกข้อมูล / SUBMIT</button>
+      <button class="btn btn-ghost" onclick="clearForm()">🗑 ล้างข้อมูล / CLEAR</button>
+    </div>
+  </div>
+
+  <div id="selectHint" class="hint">
+    <div class="hint-ico">🏭</div>
+    <div class="hint-t">เลือกเครื่องจักรเพื่อเริ่ม</div>
+    <div class="hint-s">Select machine to begin checklist</div>
+  </div>
+
+</div>
+
+<!-- ========== HISTORY PAGE ========== -->
+<div class="page" id="page-history">
+  <div class="kpi-grid">
+    <div class="kpi blue"><div class="kpi-lbl">บันทึกทั้งหมดวันนี้</div><div class="kpi-val" id="kTotal">0</div><div class="kpi-unit">records</div></div>
+    <div class="kpi green"><div class="kpi-lbl">ปกติ / Normal</div><div class="kpi-val" id="kNormal">0</div><div class="kpi-unit">entries</div></div>
+    <div class="kpi amber"><div class="kpi-lbl">แจ้งเตือน / Alert</div><div class="kpi-val" id="kAlert">0</div><div class="kpi-unit">entries</div></div>
+    <div class="kpi red"><div class="kpi-lbl">ค่าผิดปกติ</div><div class="kpi-val" id="kBad">0</div><div class="kpi-unit">parameters</div></div>
+  </div>
+  <div class="slabel">บันทึกย้อนหลัง</div>
+  <div id="histList"><div class="hint"><div class="hint-ico">📭</div><div class="hint-t">ยังไม่มีข้อมูล</div></div></div>
+</div>
+
+<!-- ========== REPORT PAGE ========== -->
+<div class="page" id="page-report">
+  <div class="slabel">สรุปรายงานประจำเดือน</div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div class="rpt-header">
+      <div class="rpt-logo">⚙</div>
+      <div class="rpt-info">
+        <div class="rpt-title">AHU Maintenance Monthly Report</div>
+        <div class="rpt-period">IIDA Electronics (Thailand) Co.,Ltd. · Section MT</div>
+        <div class="rpt-period" id="rptMonth">—</div>
+      </div>
+    </div>
+    <div style="padding:14px;">
+      <div class="kpi-grid">
+        <div class="kpi blue" style="grid-column:1/-1;">
+          <div class="kpi-lbl">PM Compliance (เดือนนี้)</div>
+          <div class="kpi-val" id="rptCompliance">—</div>
+          <div class="kpi-unit">% (target ≥ 95%)</div>
+        </div>
+      </div>
+    </div>
+    <table class="rt">
+      <thead><tr><th>MACHINE</th><th>RECORDS</th><th>ALERTS</th><th>STATUS</th></tr></thead>
+      <tbody id="rptBody"></tbody>
+    </table>
+  </div>
+  <div class="btn-2col" style="margin-top:10px;">
+    <button class="btn btn-primary" onclick="renderReport()">🔄 Refresh</button>
+    <button class="btn btn-ghost" onclick="exportCSV()">📥 Export CSV</button>
+  </div>
+  <div style="margin-top:7px;">
+    <button class="btn btn-ghost" onclick="printWeeklyReport()" style="border-color:var(--accent);color:var(--accent);">🖨️ Print Weekly Report (Chiller)</button>
+  </div>
+
+  <!-- ── EXPORT EXCEL PANEL ── -->
+  <div class="slabel" style="margin-top:16px;">ออก Excel Report</div>
+  <div class="card">
+    <div class="frow">
+      <div class="fg">
+        <div class="fl">📋 ประเภทรายงาน</div>
+        <select id="expType">
+          <option value="daily">Daily Report (รายวัน)</option>
+          <option value="weekly">Weekly Report (รายสัปดาห์)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <div class="fl">📅 เดือน</div>
+        <input type="month" id="expMonth" style="font-family:var(--mono);">
+      </div>
+      <div class="fg full">
+        <div class="fl">🏭 เครื่องจักร</div>
+        <select id="expMachine">
+          <option value="ALL_CHL">Chiller ทุกเครื่อง (ACH-01/1, 01/2, 01/3)</option>
+          <option value="ACH-01/1">ACH-01/1 เท่านั้น</option>
+          <option value="ACH-01/2">ACH-01/2 เท่านั้น</option>
+          <option value="ACH-01/3">ACH-01/3 เท่านั้น</option>
+          <option value="ALL_AHU">AHU ทุกเครื่อง (F-101 ถึง F-204)</option>
+          <option value="AHU-F-101">AHU-F-101 เท่านั้น</option>
+          <option value="AHU-F-102">AHU-F-102 เท่านั้น</option>
+          <option value="AHU-F-103">AHU-F-103 เท่านั้น</option>
+          <option value="AHU-F-201">AHU-F-201 เท่านั้น</option>
+          <option value="AHU-F-202">AHU-F-202 เท่านั้น</option>
+          <option value="AHU-F-203">AHU-F-203 เท่านั้น</option>
+          <option value="AHU-F-204">AHU-F-204 เท่านั้น</option>
+        </select>
+      </div>
+    </div>
+    <div id="expPreview" style="font-family:var(--mono);font-size:10px;color:var(--dim);
+      background:var(--s2);border-radius:6px;padding:8px;margin:8px 0;display:none;"></div>
+    <button class="btn btn-success" onclick="exportExcel()" style="margin-top:4px;">
+      📊 ส่งไป Google Sheets
+    </button>
+  </div>
+</div>
+
+<!-- ========== WORK LOG PAGE ========== -->
+<div class="page" id="page-log">
+  <div class="slabel">บันทึก Work Order</div>
+  <div class="card">
+    <div class="frow">
+      <div class="fg full">
+        <div class="fl">🔧 ประเภทงาน</div>
+        <select id="wType">
+          <option value="PM">Preventive Maintenance (PM)</option>
+          <option value="CM">Corrective Maintenance (CM)</option>
+          <option value="EM">Emergency (EM)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <div class="fl">🏭 เครื่องจักร</div>
+        <select id="wMachine">
+          <option>AHU-F-101</option><option>AHU-F-102</option><option>AHU-F-103</option>
+          <option>AHU-F-201</option><option>AHU-F-202</option><option>AHU-F-203</option><option>AHU-F-204</option>
+          <option>ACH-01/1</option><option>ACH-01/2</option><option>ACH-01/3</option>
+        </select>
+      </div>
+      <div class="fg">
+        <div class="fl">⏱ ชั่วโมง <span class="fu">hrs</span></div>
+        <input type="number" id="wHours" step="0.5" placeholder="2.0">
+      </div>
+      <div class="fg full">
+        <div class="fl">📋 รายละเอียดงาน</div>
+        <textarea id="wDetail" rows="3" placeholder="อธิบายงานที่ทำ เช่น เปลี่ยน Belt, ล้าง Filter..." style="resize:none;font-family:var(--sans);font-size:13px;"></textarea>
+      </div>
+      <div class="fg full">
+        <div class="fl">🔩 อะไหล่ที่ใช้</div>
+        <input type="text" id="wParts" placeholder="เช่น Belt A-42, Filter G4 x2">
+      </div>
+      <div class="fg">
+        <div class="fl">💰 ค่าแรง <span class="fu">฿</span></div>
+        <input type="number" id="wLabor" placeholder="0">
+      </div>
+      <div class="fg">
+        <div class="fl">💰 ค่าอะไหล่ <span class="fu">฿</span></div>
+        <input type="number" id="wPart" placeholder="0">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="submitWO()">📝 บันทึก Work Order</button>
+    </div>
+  </div>
+  <div class="slabel">Work Orders ล่าสุด</div>
+  <div id="woList"><div class="hint" style="padding:20px;"><div class="hint-t" style="font-size:11px;">ยังไม่มี Work Order</div></div></div>
+</div>
+
+</div><!-- /inner -->
+</div><!-- /scroll -->
+
+<!-- MT SECRET BUTTON — ดูเป็นแค่ badge ธรรมดา กด 5 ครั้งใน 2 วิ = unlock -->
+<div id="mtBtn" title="MT" style="
+  position:fixed;bottom:18px;right:14px;
+  width:32px;height:32px;border-radius:50%;
+  background:rgba(12,21,40,0.55);
+  border:1px solid rgba(90,112,153,0.25);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Space Mono',monospace;font-size:9px;
+  color:rgba(90,112,153,0.5);
+  cursor:default;z-index:200;user-select:none;
+  letter-spacing:0;
+" onclick="mtTap()">MT</div>
+
+<!-- BACKDOOR MODAL -->
+<div class="bd-modal" id="bdModal">
+<div class="bd-inner">
+  <div class="bd-hdr">
+    <div class="bd-title">🔐 ADMIN PANEL <span style="font-size:9px;color:var(--dim);">[RESTRICTED]</span></div>
+    <button class="bd-close" onclick="closeBD()">✕</button>
+  </div>
+
+  <div class="card warn">
+    <div class="slabel">⚡ FullFill Data Generator</div>
+    <p style="font-size:11px;color:var(--dim);margin-bottom:12px;">สร้างข้อมูลการตรวจสอบย้อนหลังอัตโนมัติ — ค่าอยู่ใน Spec เสมอ</p>
+    <div class="frow">
+      <div class="fg">
+        <div class="fl">📅 วันเริ่มต้น</div>
+        <input type="date" id="ffStart">
+      </div>
+      <div class="fg">
+        <div class="fl">📅 วันสิ้นสุด</div>
+        <input type="date" id="ffEnd">
+      </div>
+      <div class="fg full">
+        <div class="fl">🏭 เครื่องจักร</div>
+        <select id="ffMachine">
+          <option value="ALL">ทุกเครื่อง (ALL — 10 เครื่อง)</option>
+          <option value="AHU-F-101">AHU-F-101</option>
+          <option value="AHU-F-102">AHU-F-102</option>
+          <option value="AHU-F-103">AHU-F-103</option>
+          <option value="AHU-F-201">AHU-F-201</option>
+          <option value="AHU-F-202">AHU-F-202</option>
+          <option value="AHU-F-203">AHU-F-203</option>
+          <option value="AHU-F-204">AHU-F-204</option>
+          <option value="ACH-01/1">ACH-01/1 (Chiller)</option>
+          <option value="ACH-01/2">ACH-01/2 (Chiller)</option>
+          <option value="ACH-01/3">ACH-01/3 (Chiller)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <div class="fl">👤 ผู้บันทึก</div>
+        <select id="ffTech">
+          <option value="ALL">สุ่มจากทีม</option>
+          <option value="Suphanat">Mr. Suphanat Khamhom</option>
+          <option value="Yuttana">Mr. Yuttana Inplang</option>
+          <option value="Anirat">Mr. Anirat Suwannarang</option>
+        </select>
+      </div>
+      <div class="fg">
+        <div class="fl">⏰ Shift</div>
+        <select id="ffShift">
+          <option value="both">เช้า + บ่าย</option>
+          <option value="morning">เช้า 09:30</option>
+          <option value="afternoon">บ่าย 15:30</option>
+        </select>
+      </div>
+    </div>
+    <div id="ffPreview" style="background:var(--s2);border-radius:8px;padding:10px;margin:10px 0;font-family:var(--mono);font-size:11px;color:var(--dim);display:none;white-space:pre-line;"></div>
+    <div class="btn-2col">
+      <button class="btn btn-ghost" onclick="previewFF()">👁 Preview</button>
+      <button class="btn btn-warn" onclick="executeFF()">⚡ FULLFILL</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="slabel">🎲 Random Single Entry</div>
+    <div class="frow">
+      <div class="fg">
+        <div class="fl">📅 วันที่</div>
+        <input type="date" id="rndDate">
+      </div>
+      <div class="fg">
+        <div class="fl">🏭 เครื่อง</div>
+        <select id="rndMachine">
+          <option value="">สุ่ม</option>
+          <option>AHU-F-101</option><option>AHU-F-102</option><option>AHU-F-103</option>
+          <option>AHU-F-201</option><option>AHU-F-202</option><option>AHU-F-203</option><option>AHU-F-204</option>
+          <option>ACH-01/1</option><option>ACH-01/2</option><option>ACH-01/3</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="randomEntry()" style="margin-top:8px;">🎲 สร้างรายการสุ่ม</button>
+  </div>
+
+  <div class="card">
+    <div class="slabel">🗂 Database</div>
+    <div class="btn-2col">
+      <button class="btn btn-ghost" onclick="exportJSON()">📤 Export JSON</button>
+      <button class="btn btn-ghost" style="border-color:var(--danger);color:var(--danger);" onclick="clearDB()">🗑 Clear All</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- SECRET MENU OVERLAY (7-tap unlock) -->
+<div id="secretMenu" style="display:none;position:fixed;inset:0;z-index:450;background:rgba(6,12,26,.97);
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px;">
+  <div style="font-family:'Space Mono',monospace;font-size:11px;color:rgba(255,184,0,.6);letter-spacing:3px;margin-bottom:4px;">
+    ⚠ RESTRICTED ACCESS
+  </div>
+  <div onclick="openAutoFill()" style="
+    width:100%;max-width:320px;background:#111d34;border:1px solid rgba(0,255,136,.25);
+    border-radius:14px;padding:20px 18px;cursor:pointer;transition:.18s;text-align:center;"
+    onmouseover="this.style.borderColor='rgba(0,255,136,.6)'" onmouseout="this.style.borderColor='rgba(0,255,136,.25)'">
+    <div style="font-size:28px;margin-bottom:8px;">✨</div>
+    <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#00ff88;">Auto-Fill Normal</div>
+    <div style="font-size:11px;color:#5a7099;margin-top:5px;">กรอกค่าปกติทุกหัวข้ออัตโนมัติ</div>
+  </div>
+  <div onclick="openBD()" style="
+    width:100%;max-width:320px;background:#111d34;border:1px solid rgba(255,184,0,.25);
+    border-radius:14px;padding:20px 18px;cursor:pointer;transition:.18s;text-align:center;"
+    onmouseover="this.style.borderColor='rgba(255,184,0,.6)'" onmouseout="this.style.borderColor='rgba(255,184,0,.25)'">
+    <div style="font-size:28px;margin-bottom:8px;">⚙️</div>
+    <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#ffb800;">FullFill Data Generator</div>
+    <div style="font-size:11px;color:#5a7099;margin-top:5px;">สร้างข้อมูลย้อนหลังอัตโนมัติ</div>
+  </div>
+  <button onclick="closeSecretMenu()" style="
+    background:none;border:1px solid #1b2e4e;color:#5a7099;padding:10px 28px;
+    border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;margin-top:4px;">
+    ✕ ปิด / CLOSE
+  </button>
+</div>
+
+<!-- QR MODAL -->
+<div id="qrModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(6,12,26,.97);
+  align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:24px;">
+  <div style="font-family:'Space Mono',monospace;font-size:12px;color:#00d4ff;letter-spacing:2px;">QR CODE</div>
+  <div id="qrCanvas" style="background:#fff;border-radius:12px;padding:14px;display:inline-block;"></div>
+  <div id="qrLabel" style="font-family:'Space Mono',monospace;font-size:13px;color:#00d4ff;font-weight:700;"></div>
+  <div style="font-size:11px;color:#5a7099;text-align:center;">สแกน QR Code เพื่อเลือกเครื่องจักรโดยตรง</div>
+  <button onclick="closeQR()" style="
+    background:none;border:1px solid #1b2e4e;color:#5a7099;padding:10px 28px;
+    border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;">
+    ✕ ปิด
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- PRINT AREA — ซ่อนบนหน้าจอ แสดงตอน Print เท่านั้น -->
+<div id="printArea"></div>
+
+<script>
+// =====================================================
+// DATA DEFINITIONS — from FR-MT-01-04-101 & FR-MT-01-04-102
+// =====================================================
+const MACHINES_DEF = {
+  "AHU-F-101": {
+    location: "Cleanroom AHU Room", type: "Cleanroom",
+    items: [
+      {no:1,  type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำเข้า AHU",                 spec:"น้อยกว่า 13 °C",         unit:"°C",  min:null, max:13},
+      {no:2,  type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำออก AHU",                  spec:"ไม่เกิน 26 °C",          unit:"°C",  min:null, max:26},
+      {no:3,  type:"check", desc:"ตรวจเช็คระดับน้ำทิ้งของระบบ AHU",              spec:"ระดับน้ำต้องมีน้ำท่วมท่อน้ำทิ้งเสมอ"},
+      {no:4,  type:"check", desc:"ตรวจเช็คชุดเกจวัด Mano Meter",                 spec:"ไม่แตกร้าว, สามารถใช้งานได้"},
+      {no:5,  type:"value", desc:"ตรวจวัดความดันภายในของ AHU",                   spec:"Cleanroom < 450 Pa",     unit:"Pa",  min:null, max:450},
+      {no:6,  type:"check", desc:"ตรวจเช็คระบบไฟส่องสว่างภายในของ AHU",         spec:"ต้องสามารถใช้งานได้"},
+      {no:7,  type:"value", desc:"ตรวจวัด Voltage Motor ขับของ AHU",             spec:"220 V (219–221 V)",      unit:"V",   min:219, max:221},
+      {no:8,  type:"value", desc:"ตรวจวัดกระแส Motor ขับของ AHU",                spec:"95 ±0.8 A",              unit:"A",   min:94.2, max:95.8},
+      {no:9,  type:"value", desc:"ตรวจวัดกระแสไฟของชุด Heater ของ AHU",         spec:"172–185 Amp",            unit:"A",   min:172, max:185},
+      {no:10, type:"check", desc:"ตรวจเช็คความสะอาด Pre Filter ของ AHU",         spec:"ไม่ดำและไม่มีรอยฉีกขาด"},
+      {no:11, type:"check", desc:"ตรวจเช็คโครงสร้างการยึดของ Pre Filter",        spec:"ต้องแน่นไม่หลวมคลอน"},
+      {no:12, type:"check", desc:"ตรวจเช็คชุด Fin coil ของ AHU",                 spec:"ต้องไม่มีการรั่วไหลของน้ำ, ไม่สกปรก"},
+      {no:13, type:"check", desc:"ตรวจเช็คสารหล่อลื่นของจุดหมุนต่างๆ",          spec:"ต้องมีสารหล่อลื่น"},
+      {no:14, type:"check", desc:"ตรวจสอบสภาพสายพานขับของ AHU",                  spec:"ไม่แตกหักหรือขาด"},
+      {no:15, type:"check", desc:"ตรวจเช็ค Medium Filter ของ AHU",               spec:"ไม่มีรอยฉีกขาด"},
+    ]
+  }
+};
+// AHU-F-102 to 204 — Standard (SMT/WH)
+const STD_ITEMS = [
+  {no:1,  type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำเข้า AHU",                 spec:"น้อยกว่า 13 °C",         unit:"°C",  min:null, max:13},
+  {no:2,  type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำออก AHU",                  spec:"ไม่เกิน 26 °C",          unit:"°C",  min:null, max:26},
+  {no:3,  type:"check", desc:"ตรวจเช็คระดับน้ำทิ้งของระบบ AHU",              spec:"ระดับน้ำต้องมีน้ำท่วมท่อน้ำทิ้งเสมอ"},
+  {no:4,  type:"check", desc:"ตรวจเช็คชุดเกจวัด Mano Meter",                 spec:"ไม่แตกร้าว, สามารถใช้งานได้"},
+  {no:5,  type:"value", desc:"ตรวจวัดความดันภายในของ AHU",                   spec:"SMT / WH < 250 Pa",      unit:"Pa",  min:null, max:250},
+  {no:6,  type:"check", desc:"ตรวจเช็คความสะอาด Pre Filter ของ AHU",         spec:"ไม่ดำและไม่มีรอยฉีกขาด"},
+  {no:7,  type:"check", desc:"ตรวจเช็คโครงสร้างการยึดของ Pre Filter",        spec:"ต้องแน่นไม่หลวมคลอน"},
+  {no:8,  type:"check", desc:"ตรวจเช็คชุด Fin coil ของ AHU",                 spec:"ต้องไม่มีการรั่วไหลของน้ำ, ไม่สกปรก"},
+  {no:9,  type:"check", desc:"ตรวจเช็คระบบไฟส่องสว่างภายในของ AHU",         spec:"ต้องสามารถใช้งานได้"},
+  {no:10, type:"check", desc:"ตรวจสอบสภาพสายพานขับของ AHU",                  spec:"ไม่แตกหักหรือขาด"},
+  {no:11, type:"value", desc:"ตรวจวัด Voltage Motor ขับของ AHU",             spec:"220 V (219–221 V)",      unit:"V",   min:219, max:221},
+  {no:12, type:"value", desc:"ตรวจวัดกระแส Motor ขับของ AHU",                spec:"ดูตาม Spec แต่ละเครื่อง",unit:"A",   min:null, max:null},
+  {no:13, type:"check", desc:"ตรวจเช็คสารหล่อลื่นของจุดหมุนต่างๆ",          spec:"ต้องมีสารหล่อลื่น"},
+];
+// Per-machine Motor Amp specs (item 12 override)
+const MOTOR_SPECS = {
+  "AHU-F-102": {spec:"19 ±0.5 A", min:18.5, max:19.5, fill:[18.5,19.5]},
+  "AHU-F-103": {spec:"30 ±0.5 A", min:29.5, max:30.5, fill:[29.5,30.5]},
+  "AHU-F-201": {spec:"30 ±0.5 A", min:29.5, max:30.5, fill:[29.5,30.5]},
+  "AHU-F-202": {spec:"35 ±0.5 A", min:34.5, max:35.5, fill:[34.5,35.5]},
+  "AHU-F-203": {spec:"35 ±0.5 A", min:34.5, max:35.5, fill:[34.5,35.5]},
+  "AHU-F-204": {spec:"25 ±0.5 A", min:24.5, max:25.5, fill:[24.5,25.5]},
+};
+function makeStdItems(machineId) {
+  return STD_ITEMS.map(it => {
+    if (it.no === 12 && MOTOR_SPECS[machineId]) {
+      const ms = MOTOR_SPECS[machineId];
+      return {...it, spec: ms.spec, min: ms.min, max: ms.max};
+    }
+    return it;
+  });
+}
+["AHU-F-102","AHU-F-103","AHU-F-201","AHU-F-202","AHU-F-204"].forEach(id => {
+  MACHINES_DEF[id] = { location:"SMT/WH AHU Room", type:"SMT/WH", items: makeStdItems(id) };
+});
+// AHU-F-203 — มี Heater เพิ่มจาก Standard, < 200A
+MACHINES_DEF["AHU-F-203"] = {
+  location:"SMT/WH AHU Room", type:"SMT/WH",
+  items: [
+    ...makeStdItems("AHU-F-203"),
+    {no:14, type:"value", desc:"ตรวจวัดกระแสไฟของชุด Heater ของ AHU", spec:"< 200 Amp", unit:"A", min:null, max:200},
+  ]
+};
+
+// =====================================================
+// CHILLER DEFINITIONS — ACH-01/1, ACH-01/2, ACH-01/3
+// =====================================================
+// Item 14 (ล้าง Evaporator Coil) ซ่อนไว้ — แสดงเฉพาะเดือนคู่ (ก.พ, เม.ย, ...)
+const _chlMonth = new Date().getMonth(); // 0=Jan
+const _showCoil = (_chlMonth % 2 === 1); // เดือนคู่ (index 1,3,5...)
+
+// ─── Chiller: ตรวจสอบ Monthly (ข้อ 15) และ 2-Monthly (ข้อ 16) ───────────────
+function _chlItemRequired(itemNo) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+
+  if (itemNo === 15) {
+    // Monthly — ดูว่าในเดือนนี้มีการติ๊กข้อ 15 ของเครื่องนี้แล้วหรือยัง
+    const done = db.records.some(r => {
+      if (!r.machine?.startsWith('ACH')) return false;
+      const d = new Date(r.ts);
+      return d.getFullYear()===year && d.getMonth()===month && r.data?.item15 && r.data.item15 !== '-';
+    });
+    return !done; // required ถ้ายังไม่มี
+  }
+  if (itemNo === 16) {
+    // ทุก 2 เดือน — ดูว่าใน 2 เดือนนี้มีการติ๊กข้อ 16 แล้วหรือยัง
+    const biMonth = Math.floor(month / 2); // 0=ม.ค.-ก.พ., 1=มี.ค.-เม.ย.
+    const done = db.records.some(r => {
+      if (!r.machine?.startsWith('ACH')) return false;
+      const d = new Date(r.ts);
+      const dm = Math.floor(d.getMonth() / 2);
+      return d.getFullYear()===year && dm===biMonth && r.data?.item16 && r.data.item16 !== '-';
+    });
+    return !done;
+  }
+  return true; // Weekly items always required
+}
+
+const CHILLER_ITEMS = [
+  {no:1,  freq:'W', type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำออก LWT",                           spec:"5°C – 15°C",                          unit:"°C", min:5,    max:15},
+  {no:2,  freq:'W', type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำเข้า EWT",                           spec:"7.5°C – 17.5°C",                      unit:"°C", min:7.5,  max:17.5},
+  {no:3,  freq:'W', type:"value", desc:"เปอร์เซ็นการทำงาน Chiller (%)",                         spec:"-",                                   unit:"%",  min:0,    max:100},
+  {no:4,  freq:'W', type:"value", desc:"แรงดันภายในท่อน้ำเข้า Chiller",                         spec:"40–70 Psi",                           unit:"Psi",min:40,   max:70},
+  {no:5,  freq:'W', type:"value", desc:"แรงดันน้ำด้าน Suction ของ Chiller Pump",                spec:"10–25 Psi",                           unit:"Psi",min:10,   max:25},
+  {no:6,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase R",                                    spec:"< 200 A",                             unit:"A",  min:null, max:200},
+  {no:7,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase S",                                    spec:"< 200 A",                             unit:"A",  min:null, max:200},
+  {no:8,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase T",                                    spec:"< 200 A",                             unit:"A",  min:null, max:200},
+  {no:9,  freq:'W', type:"value", desc:"การเปิดของ EXV",                                        spec:"< 75%",                               unit:"%",  min:null, max:75},
+  {no:10, freq:'W', type:"value", desc:"แรงดันน้ำด้าน Discharge ของ Chiller Pump",              spec:"10–25 Psi",                           unit:"Psi",min:10,   max:25},
+  {no:11, freq:'W', type:"check", desc:"ตรวจเช็คการทำงานของ Pressure Flow Switch",              spec:"ตรวจ Contact ทำงานปกติ"},
+  {no:12, freq:'W', type:"check", desc:"ตรวจเช็ค Pressure Gauge Water In / Water Out",          spec:"ไม่แตกร้าว พร้อมใช้งาน"},
+  {no:13, freq:'W', type:"check", desc:"Mechanical Seal ของ Chiller Pump",                      spec:"ไม่มีน้ำรั่วจากแกนเพลา"},
+  {no:14, freq:'W', type:"check", desc:"ตรวจเช็คระบบท่อ ข้อต่อต่างๆ ของ Chiller",              spec:"ไม่รั่วซึม พร้อมใช้งาน"},
+  {no:15, freq:'M', type:"value", desc:"ตรวจเช็คกระแสการทำงานของ Chiller Pump",                spec:"< 47 Amp",                            unit:"A",  min:null, max:47,  optional:true},
+  {no:16, freq:'M2',type:"check", desc:"ล้างแผงคอยล์ร้อน (Evaporator Coil) — ทุก 2 เดือน",    spec:"น้ำที่ล้างต้องใสเหมือนน้ำปกติ",                               optional:true},
+  {no:17, freq:'W', type:"value", desc:"Running Chiller",                                        spec:"บันทึกชั่วโมงรัน",                    unit:"hrs",min:0,    max:null},
+];
+
+["ACH-01/1","ACH-01/2","ACH-01/3"].forEach(id => {
+  MACHINES_DEF[id] = {
+    location: "Outdoor Chiller Area",
+    type: "Chiller",
+    items: CHILLER_ITEMS
+  };
+});
+
+const ALL_MACHINES = Object.keys(MACHINES_DEF);
+const TECHS = ["Mr. Suphanat Khamhom","Mr. Yuttana Inplang","Mr. Anirat Suwannarang"];
+
+// =====================================================
+// DB
+// =====================================================
+let db = (() => { try { return JSON.parse(localStorage.getItem('mxdb2')||'{"records":[],"wo":[]}'); } catch(e){ return {records:[],wo:[]}; }})();
+const saveDB = () => localStorage.setItem('mxdb2', JSON.stringify(db));
+
+// =====================================================
+// STATE
+// =====================================================
+let curMachine = null;
+let checkState = {}; // { itemNo: { type:'check'|'value', checked:bool, value:string, ok:bool } }
+
+// =====================================================
+// CLOCK
+// =====================================================
+function tickClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('cdate').textContent = now.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('recDate').value = now.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(tickClock, 1000); tickClock();
+
+// =====================================================
+// MACHINE GRID
+// =====================================================
+function buildMachineGrid() {
+  const grid = document.getElementById('machineGrid');
+  grid.innerHTML = `
+    <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:8px;">
+      กดเลือกเครื่องจักร
+    </div>
+
+    <!-- Chiller only — AHU ซ่อนไว้ก่อน -->
+    <div class="mcat-grid" style="grid-template-columns:1fr;">
+      <div class="mcat-btn cat-chl" id="cat-chl" onclick="toggleCat('chl')">
+        <div class="mcat-arrow">▼</div>
+        <div class="mcat-icon">❄️</div>
+        <div class="mcat-name">CHILLER</div>
+        <div class="mcat-count">3 เครื่อง</div>
+      </div>
+    </div>
+
+    <!-- AHU ซ่อน (ยังมีข้อมูล แค่ไม่แสดง) -->
+    <div id="cat-ahu" style="display:none;"></div>
+    <div class="msub-wrap" id="sub-ahu" style="display:none;max-height:0;"></div>
+
+    <!-- Chiller sub-machines -->
+    <div class="msub-wrap" id="sub-chl">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:1px;
+        margin-bottom:6px;padding-left:2px;">เลือกเครื่อง CHILLER</div>
+      <div class="msub-grid">
+        ${['ACH-01/1','ACH-01/2','ACH-01/3'].map(id => {
+          const safeId = id.replace(/\//g,'-');
+          return `<div class="msel-btn" id="mb-${safeId}" onclick="selectMachine('${id}')">
+            <div class="msel-id">${id}</div>
+            <div class="msel-type">Outdoor</div>
+            <div class="msel-badge badge-chl">CHILLER</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function toggleCat(cat) {
+  const btn  = document.getElementById('cat-' + cat);
+  const sub  = document.getElementById('sub-' + cat);
+  const other = cat === 'ahu' ? 'chl' : 'ahu';
+  const isOpen = btn.classList.contains('open');
+
+  // Close other
+  document.getElementById('cat-' + other).classList.remove('open');
+  document.getElementById('sub-' + other).classList.remove('open');
+
+  // Toggle this
+  btn.classList.toggle('open', !isOpen);
+  sub.classList.toggle('open', !isOpen);
+}
+
+function selectMachine(id) {
+  curMachine = id;
+  checkState = {};
+  document.querySelectorAll('.msel-btn').forEach(b => {
+    b.classList.remove('selected','selected101','selected-chl');
+  });
+  const safeId = id.replace(/\//g,'-');
+  const btn = document.getElementById('mb-' + safeId);
+  if (btn) {
+    const type = MACHINES_DEF[id].type;
+    if (id === 'AHU-F-101') btn.classList.add('selected101');
+    else if (type === 'Chiller') btn.classList.add('selected-chl');
+    else btn.classList.add('selected');
+  }
+
+  // Auto-open the correct category if not open yet
+  const cat = id.startsWith('ACH') ? 'chl' : 'ahu';
+  const catBtn = document.getElementById('cat-' + cat);
+  const catSub = document.getElementById('sub-' + cat);
+  if (catBtn && !catBtn.classList.contains('open')) {
+    toggleCat(cat);
+  }
+
+  document.getElementById('selectHint').style.display = 'none';
+  document.getElementById('formArea').style.display = 'block';
+  document.getElementById('formTitle').textContent = `STEP 2 — ${id} CHECKLIST (${MACHINES_DEF[id].type})`;
+  document.getElementById('fi-id').textContent = id;
+  document.getElementById('fi-loc').textContent = MACHINES_DEF[id].location + ' · ' + MACHINES_DEF[id].items.length + ' หัวข้อ';
+  document.getElementById('fi-status').textContent = '● PENDING';
+  document.getElementById('fi-status').className = 'spill gray';
+  buildItems(id);
+  updateProgress();
+  document.getElementById('formArea').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// =====================================================
+// BUILD ITEMS
+// =====================================================
+function buildItems(machineId) {
+  const items = MACHINES_DEF[machineId].items;
+  const cont = document.getElementById('itemsContainer');
+  cont.innerHTML = '';
+  const isChl = machineId.startsWith('ACH');
+
+  items.forEach(item => {
+    // สำหรับ Chiller: ตรวจสอบว่า optional item ต้องทำรอบนี้ไหม
+    const isOptional = item.optional && isChl;
+    const isRequired = !isOptional || _chlItemRequired(item.no);
+    const isDone     = isOptional && !isRequired; // ทำไปแล้วในรอบนี้
+
+    checkState[item.no] = {
+      type: item.type, ok: isDone, checked: isDone,
+      value: '', optional: isOptional, skipped: isDone
+    };
+
+    const el = document.createElement('div');
+
+    // Freq badge
+    const freqColor = item.freq==='M' ? '#ffb800' : item.freq==='M2' ? '#ff6b35' : '#5a7099';
+    const freqLabel = item.freq==='M' ? 'รายเดือน' : item.freq==='M2' ? 'ทุก 2 เดือน' : 'รายสัปดาห์';
+    const freqBadge = item.freq
+      ? `<span style="font-size:8px;padding:1px 5px;border-radius:3px;border:1px solid ${freqColor};color:${freqColor};font-family:var(--mono);margin-left:4px;">${freqLabel}</span>`
+      : '';
+
+    if (isDone) {
+      // แสดง "เสร็จแล้วในรอบนี้" — ไม่ต้องกรอก
+      el.className = 'ci ck';
+      el.style.opacity = '0.55';
+      el.innerHTML = `
+        <div class="ci-box" style="background:var(--warn);border-color:var(--warn);color:#000;font-size:10px;">✓</div>
+        <div class="ci-body">
+          <div class="ci-no">${String(item.no).padStart(2,'0')}</div>
+          <div class="ci-desc">${item.desc} ${freqBadge}</div>
+          <div class="ci-spec">✅ ทำไปแล้วในรอบนี้ — ข้ามได้</div>
+        </div>`;
+      cont.appendChild(el);
+      return;
+    }
+
+    if (item.type === 'check') {
+      el.className = 'ci';
+      el.id = `ci-${item.no}`;
+      el.onclick = () => toggleCheck(item.no);
+      el.innerHTML = `
+        <div class="ci-box" id="cbox-${item.no}"></div>
+        <div class="ci-body">
+          <div class="ci-no">${String(item.no).padStart(2,'0')}</div>
+          <div class="ci-desc">${item.desc} ${freqBadge}</div>
+          <div class="ci-spec">📌 ${item.spec}${isOptional ? ' <span style="color:var(--warn)">[ไม่บังคับถ้ายังไม่ถึงรอบ]</span>' : ''}</div>
+        </div>`;
+    } else {
+      // value type
+      const hasMin = item.min !== null;
+      const hasMax = item.max !== null;
+      let rangeStr = '';
+      if (hasMin && hasMax) rangeStr = `${item.min} – ${item.max}`;
+      else if (hasMax) rangeStr = `< ${item.max}`;
+      else if (hasMin) rangeStr = `> ${item.min}`;
+
+      el.className = 'vi';
+      el.id = `vi-${item.no}`;
+      el.innerHTML = `
+        <div class="vi-header">
+          <div>
+            <div class="vi-no">หัวข้อที่ ${item.no} ${freqBadge}</div>
+            <div class="vi-desc">${item.desc}</div>
+            <div class="vi-spec">📌 ${item.spec}${isOptional ? ' <span style="color:var(--warn)">[ไม่บังคับถ้ายังไม่ถึงรอบ]</span>' : ''}</div>
+          </div>
+          <div class="vi-badge empty-badge" id="vbadge-${item.no}">—</div>
+        </div>
+        <div class="vi-input-row">
+          <input type="number" id="vinput-${item.no}" placeholder="${rangeStr || 'ใส่ค่า'}" step="0.1"
+            oninput="validateVal(${item.no}, ${item.min}, ${item.max})">
+          <div class="vi-unit">${item.unit || ''}</div>
+        </div>
+        <div class="vmsg" id="vmsg-${item.no}">⚠ ค่าผิดปกติ! Spec: ${item.spec}</div>`;
+    }
+    cont.appendChild(el);
+  });
+}
+
+// =====================================================
+// TOGGLE CHECK
+// =====================================================
+function toggleCheck(no) {
+  const ci = document.getElementById(`ci-${no}`);
+  const box = document.getElementById(`cbox-${no}`);
+  const s = checkState[no];
+  s.checked = !s.checked;
+  s.ok = s.checked;
+  if (s.checked) {
+    ci.classList.add('ck');
+    box.textContent = '✓';
+  } else {
+    ci.classList.remove('ck');
+    box.textContent = '';
+  }
+  updateProgress();
+}
+
+// =====================================================
+// VALIDATE VALUE
+// =====================================================
+function validateVal(no, min, max) {
+  const input = document.getElementById(`vinput-${no}`);
+  const badge = document.getElementById(`vbadge-${no}`);
+  const vmsg  = document.getElementById(`vmsg-${no}`);
+  const vi    = document.getElementById(`vi-${no}`);
+  const val   = parseFloat(input.value);
+  const s     = checkState[no];
+
+  s.value = input.value;
+
+  if (input.value === '' || isNaN(val)) {
+    input.className = ''; badge.className = 'vi-badge empty-badge'; badge.textContent = '—';
+    vmsg.classList.remove('show'); s.ok = false; updateProgress(); return;
+  }
+
+  const bad = (min !== null && val < min) || (max !== null && val > max);
+  if (bad) {
+    input.className = 'bad'; badge.className = 'vi-badge bad-badge'; badge.textContent = '⚠ OUT';
+    vmsg.classList.add('show'); s.ok = false;
+    vi.style.borderColor = 'rgba(255,59,92,.4)';
+    showToast(`⚠️ หัวข้อ ${no}: ค่า ${val} ผิด Spec`, 'wrn');
+  } else {
+    input.className = 'ok'; badge.className = 'vi-badge ok-badge'; badge.textContent = '✓ OK';
+    vmsg.classList.remove('show'); s.ok = true;
+    vi.style.borderColor = '';
+  }
+  updateProgress();
+}
+
+// =====================================================
+// PROGRESS
+// =====================================================
+function updateProgress() {
+  if (!curMachine) return;
+  const items = MACHINES_DEF[curMachine].items;
+  const total = items.length;
+  let done = 0;
+  let allOk = true;
+  let hasBad = false;
+
+  for (const item of items) {
+    const s = checkState[item.no];
+    if (!s) continue;
+    // ข้าม optional ที่ทำไปแล้วในรอบนี้
+    if (s.skipped) { done++; continue; }
+    if (item.type === 'check') {
+      if (s.checked) done++;
+      else if (!item.optional) allOk = false;
+      else done++; // optional ที่ยังไม่ติ๊ก ถือว่าผ่าน
+    } else {
+      const input = document.getElementById(`vinput-${item.no}`);
+      if (input && input.value !== '') {
+        done++;
+        if (!s.ok) { allOk = false; hasBad = true; }
+      } else if (item.optional) {
+        done++; // optional ที่ไม่ได้กรอก ถือว่าผ่าน
+      } else {
+        allOk = false;
+      }
+    }
+  }
+
+  const pct = total > 0 ? Math.round((done/total)*100) : 0;
+  document.getElementById('progText').textContent = `${done} / ${total}`;
+  const fill = document.getElementById('progFill');
+  fill.style.width = pct + '%';
+  fill.className = 'prog-fill' + (hasBad ? ' warn' : '');
+
+  const statusEl = document.getElementById('fi-status');
+  if (done === 0) {
+    statusEl.textContent = '● PENDING'; statusEl.className = 'spill gray';
+  } else if (done < total) {
+    statusEl.textContent = `● IN PROGRESS (${pct}%)`; statusEl.className = 'spill warn';
+  } else if (hasBad) {
+    statusEl.textContent = '● ALERT'; statusEl.className = 'spill bad';
+  } else {
+    statusEl.textContent = '● COMPLETE'; statusEl.className = 'spill ok';
+  }
+}
+
+// =====================================================
+// AUTO-FILL NORMAL
+// =====================================================
+function autoFillNormal() {
+  if (!curMachine) return;
+  const items = MACHINES_DEF[curMachine].items;
+  const values = genNormalValues(curMachine);
+  items.forEach(item => {
+    if (item.type === 'check') {
+      checkState[item.no].checked = true;
+      checkState[item.no].ok = true;
+      const ci = document.getElementById(`ci-${item.no}`);
+      const box = document.getElementById(`cbox-${item.no}`);
+      if (ci) { ci.classList.add('ck'); box.textContent = '✓'; }
+    } else {
+      const v = values[item.no];
+      const input = document.getElementById(`vinput-${item.no}`);
+      if (input) { input.value = v; validateVal(item.no, item.min, item.max); }
+    }
+  });
+  updateProgress();
+  showToast('✨ Auto-Fill เสร็จสิ้น', 'ok');
+}
+
+function genNormalValues(machineId) {
+  const rnd = (a,b,d=2) => parseFloat((Math.random()*(b-a)+a).toFixed(d));
+  const vals = {};
+
+  if (machineId.startsWith('ACH')) {
+    // Chiller
+    vals[1]  = rnd(6, 13);       // LWT 5–15°C
+    vals[2]  = rnd(9, 18);       // ENT 7.5–20°C
+    vals[3]  = rnd(50, 90, 0);   // Capacity %
+    vals[4]  = rnd(120, 190, 0); // Phase 1 < 200A
+    vals[5]  = rnd(120, 190, 0); // Phase 2 < 200A
+    vals[6]  = rnd(120, 190, 0); // Phase 3 < 200A
+    vals[7]  = rnd(30, 70);      // EXV < 75%
+    vals[8]  = rnd(30, 45);      // Pump < 47A
+    vals[15] = rnd(6, 23);       // Running hrs
+    return vals;
+  }
+
+  // Common water temp
+  vals[1] = rnd(8,12);
+  vals[2] = rnd(18,25);
+
+  if (machineId === 'AHU-F-101') {
+    vals[5] = rnd(120,180,0);
+    vals[7] = rnd(219,221);
+    vals[8] = rnd(94.2,95.8);
+    vals[9] = rnd(172,185);
+  } else if (machineId === 'AHU-F-203') {
+    vals[5]  = rnd(50,120,0);
+    vals[11] = rnd(219,221);
+    const ms = MOTOR_SPECS[machineId];
+    if (ms) vals[12] = rnd(ms.fill[0], ms.fill[1]);
+    vals[14] = rnd(5,20);
+  } else {
+    vals[5]  = rnd(50,120,0);
+    vals[11] = rnd(219,221);
+    const ms = MOTOR_SPECS[machineId];
+    if (ms) vals[12] = rnd(ms.fill[0], ms.fill[1]);
+  }
+  return vals;
+}
+
+// =====================================================
+// SUBMIT RECORD
+// =====================================================
+function submitRecord() {
+  if (!curMachine) { showToast('❌ กรุณาเลือกเครื่องจักรก่อน', 'err'); return; }
+  const items = MACHINES_DEF[curMachine].items;
+
+  // Check all filled
+  let incomplete = 0;
+  for (const item of items) {
+    const s = checkState[item.no];
+    if (!s) continue;
+    if (item.type === 'check' && !s.checked) incomplete++;
+    if (item.type === 'value') {
+      const input = document.getElementById(`vinput-${item.no}`);
+      if (!input || input.value === '') incomplete++;
+    }
+  }
+  if (incomplete > 0) {
+    showToast(`⚠️ ยังไม่ได้กรอกครบ ${incomplete} หัวข้อ`, 'wrn'); return;
+  }
+
+  const alerts = [];
+  const data = {};
+  items.forEach(item => {
+    const s = checkState[item.no];
+    if (item.type === 'value') {
+      const v = parseFloat(document.getElementById(`vinput-${item.no}`).value);
+      data[`item${item.no}`] = v;
+      if (!s.ok) alerts.push(`หัวข้อ${item.no}:${v}${item.unit}`);
+    } else {
+      data[`item${item.no}`] = s.checked ? 'N' : '-';
+    }
+  });
+
+  const record = {
+    id: 'REC-' + Date.now(),
+    ts: new Date().toISOString(),
+    machine: curMachine,
+    type: MACHINES_DEF[curMachine].type,
+    tech: document.getElementById('techSel').value,
+    status: alerts.length > 0 ? 'ALERT' : 'NORMAL',
+    alerts: alerts,
+    data: data,
+    remark: document.getElementById('remark').value
+  };
+
+  db.records.push(record);
+  saveDB();
+  updateKPIs();
+
+  const emoji = alerts.length > 0 ? '⚠️' : '✅';
+  showToast(`${emoji} บันทึกสำเร็จ — ${curMachine} [${record.status}]`, alerts.length > 0 ? 'wrn' : 'ok');
+
+  // Sync to Google Sheets (with offline queue)
+  syncToSheets(record);
+
+  // Reset
+  setTimeout(() => {
+    clearForm();
+    document.getElementById('selectHint').style.display = 'block';
+    document.getElementById('formArea').style.display = 'none';
+    document.querySelectorAll('.msel-btn').forEach(b => b.classList.remove('selected','selected101'));
+    curMachine = null;
+  }, 1200);
+}
+
+function clearForm() {
+  if (!curMachine) return;
+  checkState = {};
+  buildItems(curMachine);
+  document.getElementById('remark').value = '';
+  updateProgress();
+}
+
+// =====================================================
+// HISTORY
+// =====================================================
+function renderHistory() {
+  updateKPIs();
+  const list = document.getElementById('histList');
+  const sorted = [...db.records].reverse().slice(0, 40);
+  if (!sorted.length) {
+    list.innerHTML = '<div class="hint"><div class="hint-ico">📭</div><div class="hint-t">ยังไม่มีข้อมูล</div></div>';
+    return;
+  }
+  list.innerHTML = sorted.map(r => {
+    const d = new Date(r.ts);
+    const dateStr = d.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'}) + ' ' + d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+    const sc = r.status === 'NORMAL' ? 'ok' : 'bad';
+    const alertStr = r.alerts && r.alerts.length ? r.alerts.join(', ') : '';
+    return `<div class="hi">
+      <div class="hi-top">
+        <div class="hi-id">${r.machine}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="spill ${sc}">● ${r.status}</div>
+          <button onclick="printDailyRecord('${r.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--dim);padding:2px 7px;font-size:9px;cursor:pointer;font-family:var(--mono);" title="Print">🖨️</button>
+        </div>
+      </div>
+      <div class="hi-meta">${dateStr} · ${r.tech} · ${MACHINES_DEF[r.machine]?.type||''}</div>
+      ${alertStr ? `<div class="hi-items">⚠ ${alertStr}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateKPIs() {
+  const today = new Date().toDateString();
+  const tod = db.records.filter(r => new Date(r.ts).toDateString() === today);
+  const alerts = tod.filter(r => r.status === 'ALERT');
+  const badParams = alerts.reduce((s,r) => s + (r.alerts?.length||0), 0);
+  document.getElementById('kTotal').textContent = tod.length;
+  document.getElementById('kNormal').textContent = tod.length - alerts.length;
+  document.getElementById('kAlert').textContent = alerts.length;
+  document.getElementById('kBad').textContent = badParams;
+}
+
+// =====================================================
+// REPORT
+// =====================================================
+function renderReport() {
+  const now = new Date();
+  document.getElementById('rptMonth').textContent = now.toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+  const month = now.getMonth(), year = now.getFullYear();
+  const monthRecs = db.records.filter(r => { const d = new Date(r.ts); return d.getMonth()===month && d.getFullYear()===year; });
+  const total = monthRecs.length;
+  const normal = monthRecs.filter(r => r.status==='NORMAL').length;
+  const comp = total > 0 ? ((normal/total)*100).toFixed(1) : '—';
+  document.getElementById('rptCompliance').textContent = total > 0 ? comp + '%' : '—';
+
+  const tbody = document.getElementById('rptBody');
+  tbody.innerHTML = ALL_MACHINES.map(m => {
+    const mr = monthRecs.filter(r => r.machine === m);
+    const ma = mr.filter(r => r.status==='ALERT').length;
+    const sc = ma > 0 ? 'bad' : 'ok';
+    const st = ma > 0 ? '⚠ CHECK' : '✓ OK';
+    return `<tr>
+      <td style="font-weight:700;color:var(--accent)">${m}</td>
+      <td>${mr.length}</td>
+      <td style="color:${ma>0?'var(--danger)':'var(--dim)'}">${ma||'—'}</td>
+      <td><span class="spill ${sc}" style="font-size:9px;">${st}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportCSV() {
+  if (!db.records.length) { showToast('❌ ไม่มีข้อมูล', 'err'); return; }
+  const hdr = ['ID','Timestamp','Machine','Type','Technician','Status','Alerts','Remark'];
+  const rows = db.records.map(r => [r.id,r.ts,r.machine,r.type,r.tech,r.status,(r.alerts||[]).join('|'),r.remark]);
+  const csv = [hdr,...rows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `MX_AHU_Report_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('📥 Export CSV เสร็จสิ้น', 'ok');
+}
+
+// =====================================================
+// WORK ORDERS
+// =====================================================
+function submitWO() {
+  const wo = {
+    id: 'WO-'+Date.now(), ts: new Date().toISOString(),
+    wtype: document.getElementById('wType').value,
+    machine: document.getElementById('wMachine').value,
+    hours: document.getElementById('wHours').value,
+    detail: document.getElementById('wDetail').value,
+    parts: document.getElementById('wParts').value,
+    labor: document.getElementById('wLabor').value,
+    part: document.getElementById('wPart').value,
+  };
+  if (!wo.detail) { showToast('❌ กรุณากรอกรายละเอียดงาน', 'err'); return; }
+  db.wo.push(wo);
+  saveDB();
+  renderWOList();
+  showToast(`✅ บันทึก WO: [${wo.wtype}] ${wo.machine}`, 'ok');
+  ['wDetail','wParts','wHours','wLabor','wPart'].forEach(id => document.getElementById(id).value = '');
+}
+
+function renderWOList() {
+  const el = document.getElementById('woList');
+  const sorted = [...db.wo].reverse().slice(0,8);
+  if (!sorted.length) { el.innerHTML = '<div class="hint" style="padding:16px;"><div class="hint-t" style="font-size:11px;">ยังไม่มี Work Order</div></div>'; return; }
+  const tc = {PM:'var(--accent2)',CM:'var(--warn)',EM:'var(--danger)'};
+  el.innerHTML = sorted.map(w => `
+    <div class="hi">
+      <div class="hi-top">
+        <div class="hi-id" style="color:${tc[w.wtype]||'var(--text)'}">[${w.wtype}] ${w.machine}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim)">${w.hours||'—'}h</div>
+      </div>
+      <div class="hi-meta">${new Date(w.ts).toLocaleDateString('th-TH',{day:'2-digit',month:'short'})}</div>
+      <div class="hi-items">${w.detail.slice(0,60)}${w.detail.length>60?'...':''}</div>
+    </div>`).join('');
+}
+
+// =====================================================
+// TABS
+// =====================================================
+function goTab(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.ntab').forEach(t => t.classList.remove('on'));
+  document.getElementById('page-'+name).classList.add('on');
+  el.classList.add('on');
+  if (name === 'history') renderHistory();
+  if (name === 'report') renderReport();
+  if (name === 'log') renderWOList();
+  document.querySelector('.scroll').scrollTop = 0;
+}
+
+// =====================================================
+// MT SECRET BUTTON — 7 taps within 2s
+// Short tap (< 7) = Auto-Fill panel  |  but we do: 7 taps = show choice overlay
+// =====================================================
+let _mtTaps = 0, _mtTimer = null;
+function mtTap() {
+  _mtTaps++;
+  if (_mtTimer) clearTimeout(_mtTimer);
+  if (_mtTaps >= 7) {
+    _mtTaps = 0; _mtTimer = null;
+    openSecretMenu();
+    return;
+  }
+  _mtTimer = setTimeout(() => { _mtTaps = 0; }, 2000);
+}
+
+function openSecretMenu() {
+  document.getElementById('secretMenu').classList.add('show');
+}
+function closeSecretMenu() {
+  document.getElementById('secretMenu').classList.remove('show');
+}
+function openAutoFill() {
+  closeSecretMenu();
+  if (!curMachine) { showToast('⚠️ เลือกเครื่องก่อนใช้ Auto-Fill', 'wrn'); return; }
+  autoFillNormal();
+}
+function openBD() {
+  closeSecretMenu();
+  const now = new Date();
+  const s = new Date(now.getFullYear(), now.getMonth(), 1);
+  document.getElementById('ffStart').value = s.toISOString().slice(0,10);
+  document.getElementById('ffEnd').value = now.toISOString().slice(0,10);
+  document.getElementById('rndDate').value = now.toISOString().slice(0,10);
+  document.getElementById('bdModal').classList.add('show');
+}
+function closeBD() { document.getElementById('bdModal').classList.remove('show'); }
+
+function previewFF() {
+  const s = new Date(document.getElementById('ffStart').value);
+  const e = new Date(document.getElementById('ffEnd').value);
+  const m = document.getElementById('ffMachine').value;
+  const sh = document.getElementById('ffShift').value;
+  const mc = m === 'ALL' ? 7 : 1;
+  const days = Math.max(0, Math.round((e-s)/86400000)+1);
+  const spc = sh === 'both' ? 2 : 1;
+  const total = days * spc * mc;
+  const el = document.getElementById('ffPreview');
+  el.style.display = 'block';
+  el.textContent = `📊 จะสร้าง ${total} records\n📅 ${days} วัน × ${spc} shift/วัน × ${mc} เครื่อง\n📆 ${s.toLocaleDateString('th-TH')} → ${e.toLocaleDateString('th-TH')}`;
+}
+
+function executeFF() {
+  const s = new Date(document.getElementById('ffStart').value);
+  const e = new Date(document.getElementById('ffEnd').value);
+  const selM = document.getElementById('ffMachine').value;
+  const selT = document.getElementById('ffTech').value;
+  const sh = document.getElementById('ffShift').value;
+  const targets = selM === 'ALL' ? ALL_MACHINES : [selM];
+  const shifts = sh === 'both' ? ['09:30','15:30'] : sh === 'morning' ? ['09:30'] : ['15:30'];
+  const tlist = ['Suphanat','Yuttana','Anirat'];
+
+  let count = 0;
+  const cur = new Date(s);
+  while (cur <= e) {
+    for (const machine of targets) {
+      for (const time of shifts) {
+        const [hh,mm] = time.split(':');
+        const ts = new Date(cur);
+        ts.setHours(parseInt(hh), parseInt(mm)+Math.floor(Math.random()*10), Math.floor(Math.random()*59));
+        const tech = selT === 'ALL' ? tlist[Math.floor(Math.random()*tlist.length)] : selT;
+        const vals = genNormalValues(machine);
+        const items = MACHINES_DEF[machine].items;
+        const data = {};
+        items.forEach(it => { data[`item${it.no}`] = it.type === 'check' ? 'N' : (vals[it.no] || 0); });
+        db.records.push({
+          id: `REC-FF-${ts.getTime()}-${machine}`,
+          ts: ts.toISOString(), machine, type: MACHINES_DEF[machine].type,
+          tech, status: 'NORMAL', alerts: [], data, remark: 'Auto-generated'
+        });
+        count++;
+      }
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  saveDB(); updateKPIs();
+  showToast(`⚡ FullFill สำเร็จ! เพิ่ม ${count} records`, 'ok');
+  document.getElementById('ffPreview').style.display = 'none';
+}
+
+function randomEntry() {
+  const date = document.getElementById('rndDate').value || new Date().toISOString().slice(0,10);
+  const selM = document.getElementById('rndMachine').value;
+  const machine = selM || ALL_MACHINES[Math.floor(Math.random()*ALL_MACHINES.length)];
+  const ts = new Date(date);
+  ts.setHours(9+Math.floor(Math.random()*8), Math.floor(Math.random()*60));
+  const vals = genNormalValues(machine);
+  const items = MACHINES_DEF[machine].items;
+  const data = {};
+  items.forEach(it => { data[`item${it.no}`] = it.type === 'check' ? 'N' : (vals[it.no]||0); });
+  const tlist = ['Suphanat','Yuttana','Anirat'];
+  db.records.push({
+    id: `REC-RND-${Date.now()}`, ts: ts.toISOString(), machine,
+    type: MACHINES_DEF[machine].type,
+    tech: tlist[Math.floor(Math.random()*tlist.length)],
+    status: 'NORMAL', alerts: [], data, remark: 'Random entry'
+  });
+  saveDB(); updateKPIs();
+  showToast(`🎲 สร้างรายการสุ่ม: ${machine}`, 'ok');
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(db,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `MX_DB_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  showToast('📤 Export JSON สำเร็จ', 'ok');
+}
+
+function clearDB() {
+  if (!confirm('⚠️ ลบข้อมูลทั้งหมด? ไม่สามารถกู้คืนได้')) return;
+  db = {records:[],wo:[]}; saveDB(); updateKPIs();
+  showToast('🗑 ลบข้อมูลทั้งหมดแล้ว', 'wrn');
+}
+
+// =====================================================
+// TOAST
+// =====================================================
+let tTimer;
+function showToast(msg, cls='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast show ${cls}`;
+  clearTimeout(tTimer); tTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// =====================================================
+// QR CODE — Gen & Scan
+// =====================================================
+function showQRGen() {
+  const p = document.getElementById('qrGenPicker');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function generateQR() {
+  const machine = document.getElementById('qrMachinePick').value;
+  if (!machine) { showToast('❌ เลือกเครื่องจักรก่อน', 'err'); return; }
+
+  // Build deep-link URL: current page + ?machine=AHU-F-101
+  const url = window.location.href.split('?')[0] + '?machine=' + encodeURIComponent(machine);
+  const canvas = document.getElementById('qrCanvas');
+  canvas.innerHTML = '';
+  document.getElementById('qrLabel').textContent = machine;
+
+  // Generate QR using pure JS (no library needed - draw SVG manually via QR algo)
+  _drawQR(canvas, url, machine);
+  document.getElementById('qrModal').classList.add('show');
+  document.getElementById('qrGenPicker').style.display = 'none';
+}
+
+function closeQR() {
+  document.getElementById('qrModal').classList.remove('show');
+}
+
+// Minimal QR code generator (uses qrcodejs loaded below)
+function _drawQR(container, text, label) {
+  if (typeof QRCode !== 'undefined') {
+    new QRCode(container, {
+      text: text,
+      width: 200, height: 200,
+      colorDark: '#000000', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } else {
+    // Fallback: show URL as text if library not loaded
+    container.innerHTML = `<div style="padding:20px;font-size:10px;word-break:break-all;max-width:220px;color:#000;">${text}</div>`;
+    showToast('⚠️ QR library loading...', 'wrn');
+  }
+}
+
+// QR Scanner — use device camera via html5-qrcode
+let _qrScanner = null;
+function openQRScanner() {
+  // Show inline scanner div
+  const scanDiv = document.getElementById('qrScanArea');
+  if (scanDiv.style.display === 'block') {
+    stopQRScanner(); return;
+  }
+  scanDiv.style.display = 'block';
+  if (typeof Html5Qrcode === 'undefined') {
+    scanDiv.innerHTML = '<div style="color:var(--warn);font-size:11px;font-family:var(--mono);padding:12px;">⚠️ กำลังโหลด Camera library...</div>';
+    // Library loads async, retry
+    setTimeout(() => { if (typeof Html5Qrcode !== 'undefined') _startCamera(); }, 1500);
+    return;
+  }
+  _startCamera();
+}
+
+function _startCamera() {
+  const scanDiv = document.getElementById('qrScanArea');
+  scanDiv.innerHTML = '<div id="qrReader" style="width:100%;border-radius:8px;overflow:hidden;"></div>' +
+    '<button onclick="stopQRScanner()" style="margin-top:8px;width:100%;padding:9px;border-radius:8px;' +
+    'border:1px solid var(--border);background:var(--s2);color:var(--dim);font-family:var(--mono);font-size:10px;cursor:pointer;">✕ ปิดกล้อง</button>';
+
+  _qrScanner = new Html5Qrcode('qrReader');
+  _qrScanner.start(
+    {facingMode:'environment'},
+    {fps:10, qrbox:{width:200,height:200}},
+    (decodedText) => {
+      // Parse machine from URL param
+      try {
+        const u = new URL(decodedText);
+        const m = u.searchParams.get('machine');
+        if (m && MACHINES_DEF[m]) {
+          stopQRScanner();
+          selectMachine(m);
+          showToast(`📷 สแกนได้: ${m}`, 'ok');
+          return;
+        }
+      } catch(e) {}
+      // Try plain machine ID
+      const id = decodedText.trim().toUpperCase();
+      if (MACHINES_DEF[id]) {
+        stopQRScanner();
+        selectMachine(id);
+        showToast(`📷 สแกนได้: ${id}`, 'ok');
+      } else {
+        showToast('⚠️ QR นี้ไม่ใช่เครื่องจักรในระบบ', 'wrn');
+      }
+    },
+    () => {}
+  ).catch(err => {
+    scanDiv.innerHTML = `<div style="color:var(--danger);font-size:11px;padding:12px;font-family:var(--mono);">❌ ไม่สามารถเปิดกล้องได้<br>${err}</div>`;
+  });
+}
+
+function stopQRScanner() {
+  if (_qrScanner) { _qrScanner.stop().catch(()=>{}); _qrScanner = null; }
+  document.getElementById('qrScanArea').style.display = 'none';
+  document.getElementById('qrScanArea').innerHTML = '';
+}
+
+// Check URL param on load — auto-select machine if ?machine=AHU-F-101
+function checkURLParam() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const m = params.get('machine');
+    if (m && MACHINES_DEF[m]) {
+      setTimeout(() => selectMachine(m), 300);
+      showToast(`🔗 โหลดเครื่อง: ${m}`, 'ok');
+    }
+  } catch(e) {}
+}
+
+// =====================================================
+// PRINT FUNCTIONS
+// =====================================================
+
+const PRN_DOC_NO = 'FR-MT-01-04  Rev.02';
+const PRN_COMPANY = 'IIDA Electronics (Thailand) Co.,Ltd.';
+const PRN_SECTION = 'Section MT';
+
+function _prnHeader(title, subtitle, docNo) {
+  const now = new Date();
+  const printDate = now.toLocaleDateString('th-TH', {day:'2-digit',month:'long',year:'numeric'});
+  return `
+  <div class="prn-hdr">
+    <div class="prn-logo-box">
+      <div class="prn-logo-icon">⚙</div>
+      <div>
+        <div class="prn-company">${PRN_COMPANY}</div>
+        <div class="prn-company-sub">${PRN_SECTION} · Maintenance Department</div>
+      </div>
+    </div>
+    <div class="prn-docinfo">
+      <div class="prn-docno">${docNo || PRN_DOC_NO}</div>
+      <div>วันที่พิมพ์: ${printDate}</div>
+      <div>MX Smart Maintenance System v2.1</div>
+    </div>
+  </div>
+  <div class="prn-title-band">
+    ${title}
+    <span>${subtitle || ''}</span>
+  </div>`;
+}
+
+function _prnSig() {
+  return `
+  <div class="prn-sig">
+    <div class="prn-sig-box">
+      <div class="prn-sig-line"></div>
+      <div class="prn-sig-title">ผู้ตรวจสอบ (Technician)</div>
+      <div>Mr. Suphanat Khamhom</div>
+    </div>
+    <div class="prn-sig-box">
+      <div class="prn-sig-line"></div>
+      <div class="prn-sig-title">Jr. Engineer</div>
+      <div>Mr. Yuttana Inplang</div>
+    </div>
+    <div class="prn-sig-box">
+      <div class="prn-sig-line"></div>
+      <div class="prn-sig-title">Sr. Supervisor</div>
+      <div>Mr. Anirat Suwannarang</div>
+    </div>
+  </div>`;
+}
+
+function _prnFooter(recId) {
+  return `
+  <div class="prn-footer">
+    <span>Document: ${PRN_DOC_NO} · ${PRN_SECTION} · ${PRN_COMPANY}</span>
+    <span>Record ID: ${recId || ''}</span>
+  </div>`;
+}
+
+// ── DAILY: Print 1 record ───────────────────────────────────────────
+function printDailyRecord(recId) {
+  const rec = db.records.find(r => r.id === recId);
+  if (!rec) { showToast('❌ ไม่พบข้อมูล', 'err'); return; }
+
+  const machine = rec.machine;
+  const items   = MACHINES_DEF[machine]?.items || [];
+  const d       = new Date(rec.ts);
+  const dateStr = d.toLocaleDateString('th-TH', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  const timeStr = d.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+  const isChl   = machine.startsWith('ACH');
+
+  // Build table rows
+  const rows = items.map((item, idx) => {
+    const val = rec.data?.[`item${item.no}`];
+    const valStr = val !== undefined && val !== null ? String(val) : '-';
+    const isAlert = rec.alerts?.some(a => a.includes(`หัวข้อ${item.no}:`));
+    const valClass = isAlert ? 'prn-alert' : 'prn-ok';
+    const typeIcon = item.type === 'check' ? '☑' : '📏';
+    return `<tr>
+      <td class="td-no">${item.no}</td>
+      <td>${typeIcon} ${item.desc}</td>
+      <td class="td-spec">${item.spec || '-'}</td>
+      <td class="td-val ${valClass}">${valStr}</td>
+      <td class="td-stat">${isAlert ? '<span class="prn-status-alert">⚠ ALERT</span>' : '<span class="prn-status-ok">✓ OK</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  const alertHtml = rec.alerts?.length
+    ? `<div style="background:#ffe0e0;border:1px solid #ffaaaa;border-radius:3px;padding:5px 9px;font-size:9.5px;color:#cc0000;margin-bottom:8px;">
+        <strong>⚠ Alert:</strong> ${rec.alerts.join('  |  ')}
+       </div>` : '';
+
+  const html = `
+  ${_prnHeader(
+    `Check Sheet — ${machine} (${MACHINES_DEF[machine]?.type || ''})`,
+    `ผลการตรวจสอบรายวัน`,
+    isChl ? 'FR-MT-01-04-ACH  Rev.02' : 'FR-MT-01-04-AHU  Rev.02'
+  )}
+
+  <div class="prn-info-grid">
+    <div class="prn-info-cell">
+      <div class="prn-info-label">เครื่องจักร / Machine</div>
+      <div class="prn-info-value">${machine}</div>
+    </div>
+    <div class="prn-info-cell">
+      <div class="prn-info-label">วันที่ตรวจ / Date</div>
+      <div class="prn-info-value" style="font-size:9.5px;">${dateStr}</div>
+    </div>
+    <div class="prn-info-cell">
+      <div class="prn-info-label">เวลา / Shift</div>
+      <div class="prn-info-value">${timeStr} น.
+        &nbsp;&nbsp;
+        <span class="${rec.status === 'NORMAL' ? 'prn-status-ok' : 'prn-status-alert'}">
+          ${rec.status}
+        </span>
+      </div>
+    </div>
+    <div class="prn-info-cell">
+      <div class="prn-info-label">ผู้ตรวจสอบ / Technician</div>
+      <div class="prn-info-value">${rec.tech || '-'}</div>
+    </div>
+    <div class="prn-info-cell">
+      <div class="prn-info-label">Location</div>
+      <div class="prn-info-value">${MACHINES_DEF[machine]?.location || 'OUT DOOR'}</div>
+    </div>
+    <div class="prn-info-cell">
+      <div class="prn-info-label">Department</div>
+      <div class="prn-info-value">${PRN_SECTION}</div>
+    </div>
+  </div>
+
+  ${alertHtml}
+
+  <table class="prn-table">
+    <thead>
+      <tr>
+        <th class="td-no">No.</th>
+        <th>รายการตรวจสอบ / Description</th>
+        <th class="td-spec">Specification</th>
+        <th class="td-val">ค่าที่วัด / Value</th>
+        <th class="td-stat">Status</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="prn-remark">
+    <div class="prn-remark-label">หมายเหตุ / Remark:</div>
+    ${rec.remark || '-'}
+  </div>
+
+  <div style="font-size:8.5px;color:#555;margin-bottom:6px;">
+    N = Normal &nbsp;·&nbsp; C = Clean &nbsp;·&nbsp; A = Abnormal &nbsp;·&nbsp; ☑ = Check Item &nbsp;·&nbsp; 📏 = Value Item
+  </div>
+
+  ${_prnSig()}
+  ${_prnFooter(rec.id)}`;
+
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
+}
+
+// ── WEEKLY: Print Weekly Chiller Report ───────────────────────────
+function _getWeekRanges(year, month) {
+  const first = new Date(year, month-1, 1);
+  const last  = new Date(year, month, 0);
+  const weeks = [];
+  let cur = new Date(first), wno = 1;
+  while (cur <= last) {
+    const dow   = cur.getDay();
+    const toMon = (dow === 0) ? -6 : 1 - dow;
+    const wStart = new Date(cur);
+    wStart.setDate(wStart.getDate() + toMon);
+    const wEnd = new Date(wStart);
+    wEnd.setDate(wEnd.getDate() + 6);
+    const cs = new Date(Math.max(wStart, first));
+    const ce = new Date(Math.min(wEnd, last));
+    weeks.push({ wno, start: cs, end: ce });
+    cur = new Date(wEnd.getTime() + 86400000);
+    wno++;
+  }
+  return weeks;
+}
+
+function printWeeklyReport() {
+  const now   = new Date();
+  const year  = now.getFullYear();
+  const month = now.getMonth() + 1;
+
+  // คำนวณช่วงสัปดาห์
+  const weeks = _getWeekRanges(year, month);
+  const chlMachines = ['ACH-01/1','ACH-01/2','ACH-01/3'];
+  const chlItems = CHILLER_ITEMS;
+
+  const monthNames = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+  // สร้างตารางแยกแต่ละเครื่อง
+  const machineBlocks = chlMachines.map(machine => {
+    const macRec = db.records.filter(r => r.machine === machine);
+
+    // หา record สุดท้ายของแต่ละสัปดาห์
+    const weekRecs = weeks.map(w => {
+      const hits = macRec.filter(r => {
+        const d = new Date(r.ts);
+        return d >= w.start && d <= w.end;
+      });
+      if (!hits.length) return null;
+      return hits.sort((a,b) => new Date(b.ts) - new Date(a.ts))[0];
+    });
+
+    // Week date headers
+    const weekHdrs = weeks.map((w, i) => {
+      const rec = weekRecs[i];
+      const dateStr = rec
+        ? new Date(rec.ts).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'})
+        : '-';
+      return `<th>Week ${i+1}<br><span style="font-weight:400;font-size:7.5px;">${dateStr}</span></th>`;
+    }).join('');
+
+    // Item rows
+    const rows = chlItems.map((item, idx) => {
+      const weekCells = weekRecs.map(rec => {
+        const val = rec?.data?.[item.key];
+        const v = (val !== undefined && val !== null) ? String(val) : '-';
+        const isAlert = rec?.alerts?.some(a => a.includes(`หัวข้อ${item.no}:`));
+        return `<td class="${isAlert ? 'prn-alert' : ''}">${v}</td>`;
+      }).join('');
+      const freqBg = item.freq === 'M' ? 'style="background:#fffbea;"' : '';
+      return `<tr ${freqBg}>
+        <td class="td-no">${item.no}</td>
+        <td class="td-desc">${item.desc}</td>
+        <td class="td-spec">${item.spec}</td>
+        <td style="text-align:center;color:#888;font-size:8px;">${item.freq}</td>
+        ${weekCells}
+      </tr>`;
+    }).join('');
+
+    // Technician row
+    const techCells = weekRecs.map(rec => `<td style="font-size:8px;color:#444;">${rec?.tech || '-'}</td>`).join('');
+
+    return `
+    <div style="margin-bottom:16px; page-break-inside:avoid;">
+      <div style="background:#1a2e4a;color:#fff;padding:4px 8px;font-size:10px;font-weight:700;border-radius:3px 3px 0 0;display:flex;justify-content:space-between;">
+        <span>เครื่อง: ${machine}</span>
+        <span style="font-weight:400;font-size:9px;color:#a0c0d8;">Outdoor Chiller Area · ${PRN_SECTION}</span>
+      </div>
+      <table class="prn-week-table">
+        <thead>
+          <tr>
+            <th style="width:22px;">No.</th>
+            <th class="td-desc" style="text-align:left;width:180px;">รายการตรวจสอบ</th>
+            <th style="width:110px;">Specification</th>
+            <th style="width:26px;">Freq</th>
+            ${weekHdrs}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          <tr style="background:#f0f4f8;">
+            <td colspan="4" style="font-size:8.5px;font-weight:700;color:#1a2e4a;text-align:right;">ผู้ตรวจสอบ:</td>
+            ${techCells}
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  const html = `
+  ${_prnHeader(
+    `Check Sheet Chiller — Weekly Report`,
+    `${monthNames[month]}  ${year + 543}`,
+    'FR-MT-01-04-ACH  Rev.02'
+  )}
+
+  <div class="prn-info-grid">
+    <div class="prn-info-cell">
+      <div class="prn-info-label">ประเภทรายงาน</div>
+      <div class="prn-info-value">Weekly Report</div>
+    </div>
+    <div class="prn-info-cell">
+      <div class="prn-info-label">ช่วงเวลา / Period</div>
+      <div class="prn-info-value">${monthNames[month]} ${year + 543}</div>
+    </div>
+    <div class="prn-info-cell">
+      <div class="prn-info-label">เครื่องจักร / Machines</div>
+      <div class="prn-info-value" style="font-size:9.5px;">ACH-01/1 · ACH-01/2 · ACH-01/3</div>
+    </div>
+  </div>
+
+  <div style="font-size:8.5px;color:#555;margin-bottom:8px;padding:4px 8px;background:#f5f8fc;border-radius:3px;border:1px solid #dde;">
+    📌 ข้อมูลในแต่ละสัปดาห์มาจากการตรวจครั้งสุดท้ายของสัปดาห์นั้น &nbsp;·&nbsp;
+    N = Normal &nbsp;·&nbsp; C = Clean &nbsp;·&nbsp; A = Abnormal &nbsp;·&nbsp;
+    W = Weekly &nbsp;·&nbsp; M = Monthly (2 เดือน/ครั้ง)
+  </div>
+
+  ${machineBlocks}
+
+  ${_prnSig()}
+  ${_prnFooter('Weekly-' + year + '-' + String(month).padStart(2,'0'))}`;
+
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
+}
+// ⚙️ ใส่ URL จาก Apps Script หลัง Deploy
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzzWgRhUgecGuO8pvO-A2Kk4J4X9vPcCeY7xfTvI5-onDGZOnbh-KHbz00gi2hNCEhm/exec';
+
+let syncQueue = JSON.parse(localStorage.getItem('mxSyncQueue') || '[]');
+const saveSyncQueue = () => localStorage.setItem('mxSyncQueue', JSON.stringify(syncQueue));
+
+function syncToSheets(record) {
+  updateSyncIndicator('syncing');
+  _postToSheets({ action: 'submitRecord', payload: record })
+    .then(res => {
+      if (res && res.success) {
+        updateSyncIndicator('ok');
+        // flush queue if any
+        if (syncQueue.length > 0) flushQueue();
+      } else {
+        throw new Error('Response not ok');
+      }
+    })
+    .catch(() => {
+      // Offline — queue it
+      syncQueue.push(record);
+      saveSyncQueue();
+      updateSyncIndicator('offline');
+      showToast('📵 Offline — จะซิงค์เมื่อมีอินเตอร์เน็ต', 'wrn');
+    });
+}
+
+function _postToSheets(body) {
+  if (!SHEETS_URL || SHEETS_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+    return Promise.reject(new Error('URL not configured'));
+  }
+  return fetch(SHEETS_URL, {
+    method: 'POST',
+    mode: 'no-cors', // Apps Script requires no-cors
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(() => ({ success: true })); // no-cors always resolves
+}
+
+async function flushQueue() {
+  if (!syncQueue.length) return;
+  const pending = [...syncQueue];
+  for (const rec of pending) {
+    try {
+      await _postToSheets({ action: 'submitRecord', payload: rec });
+      syncQueue = syncQueue.filter(r => r.id !== rec.id);
+      saveSyncQueue();
+    } catch(e) { break; }
+  }
+  if (syncQueue.length === 0) {
+    updateSyncIndicator('ok');
+    showToast(`✅ ซิงค์ ${pending.length} รายการสำเร็จ`, 'ok');
+  }
+}
+
+function updateSyncIndicator(state) {
+  const el = document.getElementById('syncDot');
+  const lb = document.getElementById('syncLabel');
+  if (!el) return;
+  const map = {
+    ok:      ['#00ff88', 'SYNCED'],
+    syncing: ['#ffb800', 'SYNCING...'],
+    offline: ['#ff3b5c', `OFFLINE (${syncQueue.length} pending)`],
+    idle:    ['#5a7099', 'READY']
+  };
+  const [color, text] = map[state] || map.idle;
+  el.style.background = color;
+  lb.textContent = text;
+  lb.style.color = color;
+}
+
+// Listen for online event — auto flush
+window.addEventListener('online', () => {
+  showToast('🌐 ออนไลน์แล้ว — กำลังซิงค์...', 'ok');
+  flushQueue();
+});
+
+// =====================================================
+// EXPORT TO GOOGLE SHEETS REPORT
+// =====================================================
+function initExpMonth() {
+  const now = new Date();
+  document.getElementById('expMonth').value =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  ['expType','expMonth','expMachine'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateExpPreview);
+  });
+  updateExpPreview();
+}
+
+function updateExpPreview() {
+  const type    = document.getElementById('expType').value;
+  const monthV  = document.getElementById('expMonth').value;
+  const machine = document.getElementById('expMachine').value;
+  if (!monthV) return;
+  const [y, m] = monthV.split('-').map(Number);
+  const machines = _getExpMachines(machine);
+  const records  = _getExpRecords(machines, y, m);
+  const preview  = document.getElementById('expPreview');
+  preview.style.display = 'block';
+  preview.textContent =
+    `📊 ${type === 'daily' ? 'Daily Report (รายวัน)' : 'Weekly Report (รายสัปดาห์)'}\n` +
+    `📅 เดือน: ${m}/${y}\n` +
+    `🏭 เครื่อง: ${machines.join(', ')}\n` +
+    `📋 Records ที่มี: ${records.length} รายการ\n` +
+    `📁 จะสร้าง ${machines.length} Sheet ใน Google Sheets`;
+}
+
+function _getExpMachines(sel) {
+  if (sel === 'ALL_CHL') return ['ACH-01/1','ACH-01/2','ACH-01/3'];
+  if (sel === 'ALL_AHU') return ['AHU-F-101','AHU-F-102','AHU-F-103','AHU-F-201','AHU-F-202','AHU-F-203','AHU-F-204'];
+  return [sel];
+}
+
+function _getExpRecords(machines, year, month) {
+  return db.records.filter(r => {
+    if (!machines.includes(r.machine)) return false;
+    const d = new Date(r.ts);
+    return d.getFullYear() === year && d.getMonth()+1 === month;
+  });
+}
+
+async function exportExcel() {
+  if (!SHEETS_URL || SHEETS_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+    showToast('❌ ยังไม่ได้ตั้งค่า Apps Script URL', 'err'); return;
+  }
+  const type    = document.getElementById('expType').value;
+  const monthV  = document.getElementById('expMonth').value;
+  const machine = document.getElementById('expMachine').value;
+  if (!monthV) { showToast('❌ เลือกเดือนก่อน', 'err'); return; }
+
+  const [year, month] = monthV.split('-').map(Number);
+  const machines = _getExpMachines(machine);
+  const records  = _getExpRecords(machines, year, month);
+
+  if (records.length === 0) {
+    showToast('⚠️ ไม่มีข้อมูลในเดือนที่เลือก', 'wrn'); return;
+  }
+
+  // Show loading state
+  const btn = document.querySelector('[onclick="exportExcel()"]');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ กำลังสร้าง Report...';
+  btn.disabled = true;
+  showToast('⏳ กำลังส่งข้อมูลไป Google Sheets...', 'wrn');
+
+  try {
+    const payload = { action: 'generateReport', payload: { type, year, month, machines, records } };
+    const res = await fetch(SHEETS_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    // no-cors = opaque response, assume success if no error thrown
+    showToast(`✅ สร้าง Report สำเร็จ! เปิด Google Sheets ดูได้เลย`, 'ok');
+    // Open Sheets after short delay
+    setTimeout(() => {
+      const confirm = window.confirm('✅ Report สร้างแล้ว!\nต้องการเปิด Google Sheets ดูเลยไหม?');
+      if (confirm) window.open('https://docs.google.com/spreadsheets/', '_blank');
+    }, 500);
+  } catch(err) {
+    showToast('❌ ส่งไม่สำเร็จ: ' + err.message, 'err');
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+function _getExpMachines(sel) {
+  if (sel === 'ALL_CHL') return ['ACH-01/1','ACH-01/2','ACH-01/3'];
+  if (sel === 'ALL_AHU') return ['AHU-F-101','AHU-F-102','AHU-F-103','AHU-F-201','AHU-F-202','AHU-F-203','AHU-F-204'];
+  return [sel];
+}
+
+function _getExpRecords(machines, year, month) {
+  return db.records.filter(r => {
+    if (!machines.includes(r.machine)) return false;
+    const d = new Date(r.ts);
+    return d.getFullYear() === year && d.getMonth()+1 === month;
+  });
+}
+
+// =====================================================
+// INIT
+// =====================================================
+buildMachineGrid();
+updateKPIs();
+renderWOList();
+checkURLParam();
+initExpMonth();
+if (syncQueue.length > 0) updateSyncIndicator('offline');
+else updateSyncIndicator('idle');
+if (navigator.onLine && syncQueue.length > 0) flushQueue();
+console.log('%c⚙️ IIDA MX Smart Maintenance v2.1', 'color:#00d4ff;font-size:14px;font-weight:bold;');
+console.log('%cSecret: Tap MT circle 7× in 2s', 'color:#ffb800;font-size:11px;');
+console.log('%c📡 Sheets URL:', 'color:#5a7099;', SHEETS_URL);
+</script>
+
+<!-- QR Code library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- QR Scanner library -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+// =====================================================
+// LOGIN SYSTEM
+// =====================================================
+const USERS = {
+  '1717': { name:'Anirat',   full:'Mr. Anirat Suwannarang',   role:'Sr. Supervisor' },
+  '1515': { name:'Yuttana',  full:'Mr. Yuttana Inplang',       role:'Jr. Engineer'  },
+  '2525': { name:'Suphanat', full:'Mr. Suphanat Khamhom',      role:'Technician'    },
+};
+
+let _pin = '';
+let _currentUser = null;
+
+function pinKey(k) {
+  if (k === '') return;
+  if (k === '⌫') {
+    _pin = _pin.slice(0,-1);
+    updatePinDisplay();
+    return;
+  }
+  if (_pin.length >= 4) return;
+  _pin += String(k);
+  updatePinDisplay();
+  if (_pin.length === 4) setTimeout(checkPin, 150);
+}
+
+function updatePinDisplay() {
+  for (let i=0; i<4; i++) {
+    const dot = document.getElementById('pd'+i);
+    dot.classList.toggle('filled', i < _pin.length);
+    dot.classList.remove('error');
+  }
+  document.getElementById('loginMsg').textContent = '';
+}
+
+function checkPin() {
+  const user = USERS[_pin];
+  if (user) {
+    _currentUser = user;
+    // Pre-select technician in form
+    const sel = document.getElementById('techSel');
+    if (sel) {
+      for (let o of sel.options) {
+        if (o.value === user.name) { sel.value = user.name; break; }
+      }
+    }
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'flex';
+    showToast(`✅ ยินดีต้อนรับ ${user.full}`, 'ok');
+    _pin = '';
+    updatePinDisplay();
+    // Check end of month for auto weekly
+    checkAutoWeekly();
+  } else {
+    for (let i=0; i<4; i++) document.getElementById('pd'+i).classList.add('error');
+    document.getElementById('loginMsg').textContent = '❌ รหัสไม่ถูกต้อง';
+    setTimeout(() => { _pin=''; updatePinDisplay(); }, 1000);
+  }
+}
+
+// =====================================================
+// AUTO WEEKLY REPORT — สิ้นเดือน
+// =====================================================
+function checkAutoWeekly() {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  if (now.getDate() === lastDay) {
+    // วันสุดท้ายของเดือน → auto generate
+    setTimeout(() => {
+      const ok = confirm(`📅 วันนี้เป็นวันสุดท้ายของเดือน\nต้องการส่ง Weekly Report ไป Google Sheets อัตโนมัติไหม?`);
+      if (ok) generateWeeklyToSheets();
+    }, 1500);
+  }
+}
+
+async function generateWeeklyToSheets() {
+  if (!SHEETS_URL || SHEETS_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+    showToast('❌ ยังไม่ได้ตั้งค่า Apps Script URL', 'err'); return;
+  }
+  const now     = new Date();
+  const year    = now.getFullYear();
+  const month   = now.getMonth() + 1;
+  const machines= ['ACH-01/1','ACH-01/2','ACH-01/3'];
+
+  // ดึง records Chiller เดือนนี้
+  const records = db.records.filter(r => {
+    if (!machines.includes(r.machine)) return false;
+    const d = new Date(r.ts);
+    return d.getFullYear()===year && d.getMonth()+1===month;
+  });
+
+  // กรองเฉพาะวันศุกร์
+  const fridays = records.filter(r => new Date(r.ts).getDay() === 5);
+
+  showToast('⏳ กำลังส่ง Weekly Report...', 'wrn');
+  try {
+    await fetch(SHEETS_URL, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action:'generateReport',
+        payload:{ type:'weekly', year, month, machines, records: fridays.length > 0 ? fridays : records }
+      })
+    });
+    showToast('✅ Weekly Report ขึ้น Google Sheets แล้ว!', 'ok');
+  } catch(e) {
+    showToast('❌ ส่งไม่สำเร็จ: ' + e.message, 'err');
+  }
+}
+</script>
+</div><!-- /mainApp -->
+</body>
+</html>
