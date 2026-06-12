@@ -2151,7 +2151,7 @@ function syncToSheets(record) {
 }
 
 function _postToSheets(body) {
-  if (!SHEETS_URL || SHEETS_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+  if (!SHEETS_URL || SHEETS_URL === 'https://script.google.com/macros/s/AKfycbzzWgRhUgecGuO8pvO-A2Kk4J4X9vPcCeY7xfTvI5-onDGZOnbh-KHbz00gi2hNCEhm/exec') {
     return Promise.reject(new Error('URL not configured'));
   }
   return fetch(SHEETS_URL, {
