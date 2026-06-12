@@ -573,7 +573,7 @@ table.rt tr:hover td{background:rgba(0,212,255,.025);}
     <div class="rpt-header">
       <div class="rpt-logo">⚙</div>
       <div class="rpt-info">
-        <div class="rpt-title">AHU Maintenance Monthly Report</div>
+        <div class="rpt-title">Chiller Maintenance Monthly Report</div>
         <div class="rpt-period">IIDA Electronics (Thailand) Co.,Ltd. · Section MT</div>
         <div class="rpt-period" id="rptMonth">—</div>
       </div>
@@ -592,52 +592,8 @@ table.rt tr:hover td{background:rgba(0,212,255,.025);}
       <tbody id="rptBody"></tbody>
     </table>
   </div>
-  <div class="btn-2col" style="margin-top:10px;">
+  <div style="margin-top:10px;">
     <button class="btn btn-primary" onclick="renderReport()">🔄 Refresh</button>
-    <button class="btn btn-ghost" onclick="exportCSV()">📥 Export CSV</button>
-  </div>
-  <div style="margin-top:7px;">
-    <button class="btn btn-ghost" onclick="printWeeklyReport()" style="border-color:var(--accent);color:var(--accent);">🖨️ Print Weekly Report (Chiller)</button>
-  </div>
-
-  <!-- ── EXPORT EXCEL PANEL ── -->
-  <div class="slabel" style="margin-top:16px;">ออก Excel Report</div>
-  <div class="card">
-    <div class="frow">
-      <div class="fg">
-        <div class="fl">📋 ประเภทรายงาน</div>
-        <select id="expType">
-          <option value="daily">Daily Report (รายวัน)</option>
-          <option value="weekly">Weekly Report (รายสัปดาห์)</option>
-        </select>
-      </div>
-      <div class="fg">
-        <div class="fl">📅 เดือน</div>
-        <input type="month" id="expMonth" style="font-family:var(--mono);">
-      </div>
-      <div class="fg full">
-        <div class="fl">🏭 เครื่องจักร</div>
-        <select id="expMachine">
-          <option value="ALL_CHL">Chiller ทุกเครื่อง (ACH-01/1, 01/2, 01/3)</option>
-          <option value="ACH-01/1">ACH-01/1 เท่านั้น</option>
-          <option value="ACH-01/2">ACH-01/2 เท่านั้น</option>
-          <option value="ACH-01/3">ACH-01/3 เท่านั้น</option>
-          <option value="ALL_AHU">AHU ทุกเครื่อง (F-101 ถึง F-204)</option>
-          <option value="AHU-F-101">AHU-F-101 เท่านั้น</option>
-          <option value="AHU-F-102">AHU-F-102 เท่านั้น</option>
-          <option value="AHU-F-103">AHU-F-103 เท่านั้น</option>
-          <option value="AHU-F-201">AHU-F-201 เท่านั้น</option>
-          <option value="AHU-F-202">AHU-F-202 เท่านั้น</option>
-          <option value="AHU-F-203">AHU-F-203 เท่านั้น</option>
-          <option value="AHU-F-204">AHU-F-204 เท่านั้น</option>
-        </select>
-      </div>
-    </div>
-    <div id="expPreview" style="font-family:var(--mono);font-size:10px;color:var(--dim);
-      background:var(--s2);border-radius:6px;padding:8px;margin:8px 0;display:none;"></div>
-    <button class="btn btn-success" onclick="exportExcel()" style="margin-top:4px;">
-      📊 ส่งไป Google Sheets
-    </button>
   </div>
 </div>
 
@@ -843,7 +799,31 @@ table.rt tr:hover td{background:rgba(0,212,255,.025);}
 
 <div class="toast" id="toast"></div>
 
-<!-- PRINT AREA — ซ่อนบนหน้าจอ แสดงตอน Print เท่านั้น -->
+<!-- WEEKLY ALERT MODAL -->
+<div id="weeklyAlertBox" style="display:none;position:fixed;inset:0;z-index:600;
+  background:rgba(6,12,26,.95);align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#1a0508;border:1px solid var(--danger);border-radius:16px;
+    padding:28px 24px;width:100%;max-width:320px;text-align:center;">
+    <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
+    <div style="font-family:var(--mono);font-size:13px;font-weight:700;
+      color:var(--danger);letter-spacing:1px;margin-bottom:8px;">
+      ยังไม่มีการตรวจสอบสัปดาห์นี้!
+    </div>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:16px;">
+      เครื่องที่ยังไม่ได้ตรวจ (อา–ศ):
+    </div>
+    <div id="weeklyAlertMsg" style="font-family:var(--mono);font-size:13px;
+      color:var(--warn);line-height:2;margin-bottom:20px;white-space:pre;"></div>
+    <button onclick="closeWeeklyAlert()" style="
+      background:var(--danger);border:none;border-radius:10px;
+      color:#fff;padding:12px 32px;font-family:var(--mono);
+      font-size:12px;font-weight:700;cursor:pointer;width:100%;">
+      รับทราบ / OK
+    </button>
+  </div>
+</div>
+
+<!-- PRINT AREA -->
 <div id="printArea"></div>
 
 <script>
@@ -955,23 +935,16 @@ function _chlItemRequired(itemNo) {
 }
 
 const CHILLER_ITEMS = [
-  {no:1,  freq:'W', type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำออก LWT",                           spec:"5°C – 15°C",                          unit:"°C", min:5,    max:15},
-  {no:2,  freq:'W', type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำเข้า EWT",                           spec:"7.5°C – 17.5°C",                      unit:"°C", min:7.5,  max:17.5},
-  {no:3,  freq:'W', type:"value", desc:"เปอร์เซ็นการทำงาน Chiller (%)",                         spec:"-",                                   unit:"%",  min:0,    max:100},
-  {no:4,  freq:'W', type:"value", desc:"แรงดันภายในท่อน้ำเข้า Chiller",                         spec:"40–70 Psi",                           unit:"Psi",min:40,   max:70},
-  {no:5,  freq:'W', type:"value", desc:"แรงดันน้ำด้าน Suction ของ Chiller Pump",                spec:"10–25 Psi",                           unit:"Psi",min:10,   max:25},
-  {no:6,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase R",                                    spec:"< 200 A",                             unit:"A",  min:null, max:200},
-  {no:7,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase S",                                    spec:"< 200 A",                             unit:"A",  min:null, max:200},
-  {no:8,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase T",                                    spec:"< 200 A",                             unit:"A",  min:null, max:200},
-  {no:9,  freq:'W', type:"value", desc:"การเปิดของ EXV",                                        spec:"< 75%",                               unit:"%",  min:null, max:75},
-  {no:10, freq:'W', type:"value", desc:"แรงดันน้ำด้าน Discharge ของ Chiller Pump",              spec:"10–25 Psi",                           unit:"Psi",min:10,   max:25},
-  {no:11, freq:'W', type:"check", desc:"ตรวจเช็คการทำงานของ Pressure Flow Switch",              spec:"ตรวจ Contact ทำงานปกติ"},
-  {no:12, freq:'W', type:"check", desc:"ตรวจเช็ค Pressure Gauge Water In / Water Out",          spec:"ไม่แตกร้าว พร้อมใช้งาน"},
-  {no:13, freq:'W', type:"check", desc:"Mechanical Seal ของ Chiller Pump",                      spec:"ไม่มีน้ำรั่วจากแกนเพลา"},
-  {no:14, freq:'W', type:"check", desc:"ตรวจเช็คระบบท่อ ข้อต่อต่างๆ ของ Chiller",              spec:"ไม่รั่วซึม พร้อมใช้งาน"},
-  {no:15, freq:'M', type:"value", desc:"ตรวจเช็คกระแสการทำงานของ Chiller Pump",                spec:"< 47 Amp",                            unit:"A",  min:null, max:47,  optional:true},
-  {no:16, freq:'M2',type:"check", desc:"ล้างแผงคอยล์ร้อน (Evaporator Coil) — ทุก 2 เดือน",    spec:"น้ำที่ล้างต้องใสเหมือนน้ำปกติ",                               optional:true},
-  {no:17, freq:'W', type:"value", desc:"Running Chiller",                                        spec:"บันทึกชั่วโมงรัน",                    unit:"hrs",min:0,    max:null},
+  {no:1,  freq:'W', type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำออก LWT",                    spec:"5°C – 15°C",       unit:"°C",  min:5,    max:15},
+  {no:2,  freq:'W', type:"value", desc:"ตรวจเช็คอุณหภูมิน้ำเข้า EWT",                    spec:"6.5°C – 17.5°C",  unit:"°C",  min:6.5,  max:17.5},
+  {no:3,  freq:'W', type:"value", desc:"เปอร์เซ็นการทำงาน Chiller (%)",                  spec:"-",               unit:"%",   min:0,    max:100},
+  {no:4,  freq:'W', type:"value", desc:"ตรวจเช็คแรงดันภายในท่อน้ำเข้า Chiller",         spec:"40–70 Psi",       unit:"Psi", min:40,   max:70},
+  {no:5,  freq:'W', type:"value", desc:"ตรวจเช็คแรงดันน้ำด้าน Suction ของ Chiller Pump",spec:"10–25 Psi",       unit:"Psi", min:10,   max:25},
+  {no:6,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase R",                              spec:"< 200 A",         unit:"A",   min:null, max:200},
+  {no:7,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase S",                              spec:"< 200 A",         unit:"A",   min:null, max:200},
+  {no:8,  freq:'W', type:"value", desc:"กระแสไฟฟ้า Phase T",                              spec:"< 200 A",         unit:"A",   min:null, max:200},
+  {no:9,  freq:'W', type:"value", desc:"การเปิดของ EXV",                                  spec:"< 75%",           unit:"%",   min:null, max:75},
+  {no:10, freq:'W', type:"value", desc:"Running Chiller",                                  spec:"-",               unit:"hrs", min:0,    max:null},
 ];
 
 ["ACH-01/1","ACH-01/2","ACH-01/3"].forEach(id => {
@@ -1366,6 +1339,8 @@ function submitRecord() {
   for (const item of items) {
     const s = checkState[item.no];
     if (!s) continue;
+    if (s.skipped) continue; // ข้ามรายการที่ทำไปแล้วในรอบนี้
+    if (item.optional) continue; // ข้ามรายการ optional
     if (item.type === 'check' && !s.checked) incomplete++;
     if (item.type === 'value') {
       const input = document.getElementById(`vinput-${item.no}`);
@@ -1410,6 +1385,11 @@ function submitRecord() {
 
   // Sync to Google Sheets (with offline queue)
   syncToSheets(record);
+
+  // ถ้าเป็น Chiller → เขียนลง Weekly Checklist Spreadsheet ด้วย
+  if (curMachine && curMachine.startsWith('ACH')) {
+    writeToWeeklyChecklist(record);
+  }
 
   // Reset
   setTimeout(() => {
@@ -1484,7 +1464,8 @@ function renderReport() {
   document.getElementById('rptCompliance').textContent = total > 0 ? comp + '%' : '—';
 
   const tbody = document.getElementById('rptBody');
-  tbody.innerHTML = ALL_MACHINES.map(m => {
+  const chlMachines = ALL_MACHINES.filter(m => m.startsWith('ACH'));
+  tbody.innerHTML = chlMachines.map(m => {
     const mr = monthRecs.filter(r => r.machine === m);
     const ma = mr.filter(r => r.status==='ALERT').length;
     const sc = ma > 0 ? 'bad' : 'ok';
@@ -2123,8 +2104,29 @@ function printWeeklyReport() {
   document.getElementById('printArea').innerHTML = html;
   window.print();
 }
+
+// =====================================================
+// WRITE TO WEEKLY CHECKLIST SPREADSHEET
+// =====================================================
+function writeToWeeklyChecklist(record) {
+  if (!SHEETS_URL || SHEETS_URL === 'https://script.google.com/macros/s/AKfycbzzWgRhUgecGuO8pvO-A2Kk4J4X9vPcCeY7xfTvI5-onDGZOnbh-KHbz00gi2hNCEhm/exec') return;
+  const d       = new Date(record.ts);
+  const dateStr = d.toLocaleDateString('th-TH', {day:'2-digit',month:'2-digit',year:'numeric'});
+  const timeStr = d.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'});
+  const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
+  const weekNo   = Math.ceil((d.getDate() + firstDay.getDay()) / 7);
+  fetch(SHEETS_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      action: 'writeWeeklyChecklist',
+      payload: { machine:record.machine, weekNo, data:record.data, date:dateStr, time:timeStr, tech:record.tech }
+    })
+  }).catch(e => console.warn('Weekly sync error:', e));
+}
+
 // ⚙️ ใส่ URL จาก Apps Script หลัง Deploy
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzzWgRhUgecGuO8pvO-A2Kk4J4X9vPcCeY7xfTvI5-onDGZOnbh-KHbz00gi2hNCEhm/exec';
+const SHEETS_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
 
 let syncQueue = JSON.parse(localStorage.getItem('mxSyncQueue') || '[]');
 const saveSyncQueue = () => localStorage.setItem('mxSyncQueue', JSON.stringify(syncQueue));
@@ -2151,7 +2153,7 @@ function syncToSheets(record) {
 }
 
 function _postToSheets(body) {
-  if (!SHEETS_URL || SHEETS_URL === 'https://script.google.com/macros/s/AKfycbzzWgRhUgecGuO8pvO-A2Kk4J4X9vPcCeY7xfTvI5-onDGZOnbh-KHbz00gi2hNCEhm/exec') {
+  if (!SHEETS_URL || SHEETS_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
     return Promise.reject(new Error('URL not configured'));
   }
   return fetch(SHEETS_URL, {
@@ -2319,6 +2321,51 @@ if (navigator.onLine && syncQueue.length > 0) flushQueue();
 console.log('%c⚙️ IIDA MX Smart Maintenance v2.1', 'color:#00d4ff;font-size:14px;font-weight:bold;');
 console.log('%cSecret: Tap MT circle 7× in 2s', 'color:#ffb800;font-size:11px;');
 console.log('%c📡 Sheets URL:', 'color:#5a7099;', SHEETS_URL);
+
+// =====================================================
+// SATURDAY WEEKLY CHECK ALERT
+// =====================================================
+function checkWeeklyInspectionAlert() {
+  const now = new Date();
+  // ทำงานเฉพาะวันเสาร์ (day = 6)
+  if (now.getDay() !== 6) return;
+
+  const CHL_MACHINES = ['ACH-01/1', 'ACH-01/2', 'ACH-01/3'];
+
+  // สัปดาห์นี้ = อาทิตย์ (6 วันที่แล้ว) ถึง ศุกร์ (เมื่อวาน)
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - 6); // วันอาทิตย์
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(now);
+  weekEnd.setDate(now.getDate() - 1); // วันศุกร์
+  weekEnd.setHours(23, 59, 59, 999);
+
+  // เช็คว่าแต่ละเครื่องมี record ในสัปดาห์นี้ไหม
+  const missing = CHL_MACHINES.filter(machine => {
+    return !db.records.some(r => {
+      if (r.machine !== machine) return false;
+      const d = new Date(r.ts);
+      return d >= weekStart && d <= weekEnd;
+    });
+  });
+
+  if (missing.length === 0) return; // ทุกเครื่องตรวจแล้ว
+
+  // แสดง Alert Modal
+  const machineList = missing.map(m => `• ${m}`).join('\n');
+  const alertBox = document.getElementById('weeklyAlertBox');
+  const alertMsg = document.getElementById('weeklyAlertMsg');
+  if (alertBox && alertMsg) {
+    alertMsg.textContent = machineList;
+    alertBox.style.display = 'flex';
+  }
+}
+
+function closeWeeklyAlert() {
+  const alertBox = document.getElementById('weeklyAlertBox');
+  if (alertBox) alertBox.style.display = 'none';
+}
 </script>
 
 <!-- QR Code library -->
@@ -2379,6 +2426,8 @@ function checkPin() {
     updatePinDisplay();
     // Check end of month for auto weekly
     checkAutoWeekly();
+    // Check Saturday weekly inspection alert
+    setTimeout(checkWeeklyInspectionAlert, 800);
   } else {
     for (let i=0; i<4; i++) document.getElementById('pd'+i).classList.add('error');
     document.getElementById('loginMsg').textContent = '❌ รหัสไม่ถูกต้อง';
